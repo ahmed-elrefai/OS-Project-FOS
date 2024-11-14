@@ -90,20 +90,17 @@ void* sbrk(int numOfPages)
 	// Write your code here, remove the panic and write your code
 	//panic("sbrk() is not implemented yet...!!");
 	cprintf("---------------sbrk called---------------\n");
-	cprintf("flag1\n");
 	if(numOfPages == 0) return (void*)segment_break; // edge case
 
 	uint32 increasing = numOfPages * PAGE_SIZE; // size to be allocated
 	uint32 last_address = segment_break + increasing;
 	uint32 old_sbrk = segment_break;
 
-	cprintf("flag2\n");
 	if(last_address > hard_limit)
 	{
 		return (void *)E_UNSPECIFIED;
 	}
 
-	cprintf("flag3\n");
 	//page address
 	uint32 va = segment_break;
 
@@ -124,26 +121,20 @@ void* sbrk(int numOfPages)
         map_frame(ptr_page_directory , ptr_frame_info , va ,  PERM_WRITEABLE);
         va += PAGE_SIZE;
 	}
-	cprintf("flag4\n");
-	cprintf("->>>%d,  ->>%d\n", (void*)(va - sizeof(int))-(void*)(segment_break - sizeof(int)), increasing);
-
 
 	struct blockElement * newBlock = (struct blockElement *)(segment_break); // assign old brk to a block
 	segment_break = va;
 	int32 *end_last_page = (int32 *)(va - sizeof(int));
 
 	*end_last_page = 1;
-	cprintf("flag5\n");
 
 
 	set_block_data((void*)newBlock , increasing , 1);
-	cprintf("flag6\n");
 
 	// you have to set bounds first before calling free as it checks for them
 	end_bound = (void*) end_last_page;
 
 	free_block((void*)newBlock);
-	cprintf("flag7\n");
 
 	return (void*)old_sbrk;
 }
@@ -199,25 +190,25 @@ void* kmalloc(unsigned int size)
 //    4. map virtual to physical
 
 //	SIZE VALIDATION:
-		//cprintf("last allocated pg: %x\n", pgalloc_last);
 
 		int total_size = size;
 		if(total_size <= DYN_ALLOC_MAX_BLOCK_SIZE) {
 			return alloc_block_FF((uint32)total_size);
 		}
 
-//		cprintf("kmalloc0\n");
+		if (size > (KERNEL_HEAP_MAX - pgalloc_last)){
+			//cprintf("trying to allocate greater than limit\n");
+			return NULL;
+		}
 
 		// making total size multiple of page size
 		if (size % PAGE_SIZE != 0) {
 			int remain = PAGE_SIZE - (size % PAGE_SIZE);
 			total_size += remain;
 		}
-//		cprintf("kmalloc1\n");
 
 //		ALLOCATE  & MAP
 		uint32 it = get_pgallocation_address((uint32)total_size);
-//		cprintf("kmalloc2\n");
 		if (it == pgalloc_last) {
 			if(pgalloc_last + total_size > KERNEL_HEAP_MAX) {
 				return NULL;
@@ -226,7 +217,6 @@ void* kmalloc(unsigned int size)
 			pgalloc_last += total_size;
 		}
 
-//		cprintf("kmalloc3\n");
 
 		uint32 result = it;
 		uint32 num_pages = total_size / PAGE_SIZE;
@@ -245,16 +235,9 @@ void* kmalloc(unsigned int size)
 			}
 
 		}
-//		cprintf("kmalloc4\n");
 
 		return (void*)result;
 }
-
-//    // use "isKHeapPlacementStrategyFIRSTFIT() ..." functions to check the current strategy
-//    cprintf("size: %d\n", (size / 1024));
-//    cprintf("total size: %d\n", (total_size / 1024));
-  //  return
-   // kpanic_into_prompt("kmalloc() is not implemented yet...!!");
 
 
 void kfree(void* virtual_address)
