@@ -172,8 +172,17 @@ uint32 get_pgallocation_address(uint32 size) {
 	}
 
 	// if exist some free pages before pgalloc_last
-	if(pgalloc_ptr != 0 && curSize >= size) return pgalloc_ptr;
-
+	if(pgalloc_ptr != 0 && curSize >= size)
+	{   uint32 backwards= pgalloc_ptr;
+		uint32 *backwards_ptr;
+		uint32 order = curSize/PAGE_SIZE;
+		while(order--)
+		{   backwards_ptr = (uint32 *)backwards;
+			*backwards_ptr =order;
+			backwards = backwards -PAGE_SIZE;
+		}
+		return (pgalloc_ptr);
+	}
 	return pgalloc_last;
 
 }
@@ -201,14 +210,17 @@ void* kmalloc(unsigned int size)
 			return NULL;
 		}
 
+
 		// making total size multiple of page size
 		if (size % PAGE_SIZE != 0) {
 			int remain = PAGE_SIZE - (size % PAGE_SIZE);
 			total_size += remain;
 		}
 
+
 //		ALLOCATE  & MAP
 		uint32 it = get_pgallocation_address((uint32)total_size);
+
 		if (it == pgalloc_last) {
 			if(pgalloc_last + total_size > KERNEL_HEAP_MAX) {
 				return NULL;
@@ -217,8 +229,8 @@ void* kmalloc(unsigned int size)
 			pgalloc_last += total_size;
 		}
 
-
 		uint32 result = it;
+		uint32 rett = it;
 		uint32 num_pages = total_size / PAGE_SIZE;
 		for (int i = 1; i <= num_pages; i++, it += PAGE_SIZE) {
 
@@ -236,19 +248,100 @@ void* kmalloc(unsigned int size)
 
 		}
 
-		return (void*)result;
-}
+		uint32 towards= rett;
+		uint32 *towards_ptr;
+		uint32 order = 1;
+		while(total_size)
+		{   towards_ptr = (uint32 *)towards;
+			*towards_ptr =order++;
+			towards = towards +PAGE_SIZE;
+			total_size = total_size - PAGE_SIZE;
+		}
 
+		return (void*)rett;
+}
 
 void kfree(void* virtual_address)
 {
 	//TODO: [PROJECT'24.MS2 - #04] [1] KERNEL HEAP - kfree
 	// Write your code here, remove the panic and write your code
-	panic("kfree() is not implemented yet...!!");
+//	panic("kfree() is not implemented yet...!!");
 
 	//you need to get the size of the given allocation using its address
 	//refer to the project presentation and documentation for details
 
+//	1. validate arguments
+//	2. if Blk allocator | Call free
+//	3. if Pg allocator  | unmap & remove all the related frames.
+
+//	validate:
+	if (virtual_address == NULL || (uint32)virtual_address > KERNEL_HEAP_MAX|| (uint32)virtual_address < KERNEL_HEAP_START)
+	{return;}
+
+	if ((uint32)virtual_address > segment_break && (uint32)virtual_address <= hard_limit+PAGE_SIZE)
+	{return;}
+
+//	free: whether Blk or Pg allocator
+	if ((uint32)virtual_address <= segment_break && (uint32)virtual_address >=start_kernal_heap){
+//		Blk allocator: call free;
+		cprintf("free using the dynalloc.\n");
+		free_block(virtual_address);
+		return;
+	}
+
+
+//      make sure it stands at the start of the page
+		uint32 begin = hard_limit + PAGE_SIZE;
+		uint32 remain = ((uint32)virtual_address - begin) % PAGE_SIZE;
+		uint32 correct_add =(uint32)virtual_address - remain;
+		virtual_address =(void *) correct_add;
+
+        //checking some conditions
+		uint32 *ptr_page_table = NULL;
+		int table_status = get_page_table(ptr_page_directory, (uint32)virtual_address, &ptr_page_table);
+		if (table_status == TABLE_NOT_EXIST){panic("404 Page Table, the pg table was not found\n");}
+		struct FrameInfo *start_frame = get_frame_info(ptr_page_directory, (uint32)virtual_address, &ptr_page_table);
+		if (start_frame == NULL){panic("404 Virtual address, va is already free.\n");}
+
+		//the process
+        uint32 *current_page  = (uint32 *) virtual_address;
+        uint32 current_adress = (uint32  ) virtual_address;
+       // cprintf("current_page %x  " , current_page);
+        uint32 order = (uint32 )*current_page;
+        current_adress  = current_adress - ( (order -1) * PAGE_SIZE);
+        current_page = (uint32 *) current_adress;
+
+        if(order==0)
+        	return;
+        else if (order == 1){
+            table_status = get_page_table(ptr_page_directory, (uint32)current_adress, &ptr_page_table);
+    		if (table_status == TABLE_NOT_EXIST){return;}
+    		struct FrameInfo *frame = get_frame_info(ptr_page_directory,(uint32)current_adress,&ptr_page_table);
+    		if (frame == NULL){return;}
+    		unmap_frame(ptr_page_directory, (uint32)current_adress);
+    		free_frame(frame);
+    		current_adress  = current_adress + PAGE_SIZE;
+    		current_page = (uint32 *) current_adress;
+    		return;
+        }
+
+//        cprintf("order %d  " , order);
+//        cprintf("current_adress %x  " , current_adress);
+
+
+
+        while((*current_page)!=1){
+        	int32 table_status = get_page_table(ptr_page_directory, (uint32)current_adress, &ptr_page_table);
+			if (table_status == TABLE_NOT_EXIST){return;}
+        	struct FrameInfo *frame = get_frame_info(ptr_page_directory,(uint32)current_adress,&ptr_page_table);
+        	if (frame == NULL){return;}
+        	unmap_frame(ptr_page_directory, (uint32)current_adress);
+			free_frame(frame);
+			*current_page = 0;
+
+			current_adress  = current_adress + PAGE_SIZE;
+			current_page = (uint32 *) current_adress;
+        }
 }
 
 unsigned int kheap_physical_address(unsigned int virtual_address)
