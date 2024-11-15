@@ -141,20 +141,20 @@ void* sbrk(int numOfPages)
 
 //TODO: [PROJECT'24.MS2 - BONUS#2] [1] KERNEL HEAP - Fast Page Allocator
 
-uint32 get_pgallocation_address(uint32 size) {
-	uint32 start = hard_limit + PAGE_SIZE;
-	uint32 total_pages = (pgalloc_last - start) / PAGE_SIZE;
+void* get_pgallocation_address(uint32 size) {
+	void* start = (void*)(hard_limit + PAGE_SIZE);
+	uint32 total_pages = ((void*)pgalloc_last - start) / PAGE_SIZE;
+	cprintf("the value of start address: %x\n", start);
 
-	uint32 it = start;
+	void* it = start;
 	uint32 curSize = 0;
-	uint32 pgalloc_ptr = 0;
+	void* pgalloc_ptr = 0;
 
 
-	for (; it < pgalloc_last; it += PAGE_SIZE) {
+	for (; it < (void*)pgalloc_last; it += PAGE_SIZE) {
 
 		uint32 *ptr_table = NULL;
-		struct FrameInfo *ptr_frame_info = get_frame_info(ptr_page_directory, it, &ptr_table);
-
+		struct FrameInfo *ptr_frame_info = get_frame_info(ptr_page_directory, (uint32)it, &ptr_table);
 		if (ptr_frame_info == NULL) { // free frame
 			if(curSize == 0) {
 				pgalloc_ptr = it;
@@ -163,7 +163,7 @@ uint32 get_pgallocation_address(uint32 size) {
 
 		}else {
 			curSize = 0;
-			pgalloc_ptr = 0;
+			pgalloc_ptr = NULL;
 		}
 
 		if (curSize >= size) {
@@ -172,11 +172,11 @@ uint32 get_pgallocation_address(uint32 size) {
 	}
 
 	// if exist some free pages before pgalloc_last
-	if(pgalloc_ptr != 0 && curSize >= size)
+	if(curSize >= size)
 	{
-		return (pgalloc_ptr);
+		return pgalloc_ptr;
 	}
-	return pgalloc_last;
+	return (void*)pgalloc_last;
 
 }
 
@@ -212,9 +212,10 @@ void* kmalloc(unsigned int size)
 
 
 //		ALLOCATE  & MAP
-		uint32 it = get_pgallocation_address((uint32)total_size);
+		void* it = get_pgallocation_address((uint32)total_size);
+		void* rett = it;
 
-		if (it == pgalloc_last) {
+		if (it == (void*)pgalloc_last) {
 			if(pgalloc_last + total_size > KERNEL_HEAP_MAX) {
 				return NULL;
 			}
@@ -222,8 +223,6 @@ void* kmalloc(unsigned int size)
 			pgalloc_last += total_size;
 		}
 
-		uint32 result = it;
-		uint32 rett = it;
 		uint32 num_pages = total_size / PAGE_SIZE;
 		for (int i = 1; i <= num_pages; i++, it += PAGE_SIZE) {
 
@@ -234,7 +233,7 @@ void* kmalloc(unsigned int size)
 				return NULL;
 			}
 
-			state = map_frame(ptr_page_directory, newFrame, it, PERM_WRITEABLE);
+			state = map_frame(ptr_page_directory, newFrame, (uint32)it, PERM_WRITEABLE);
 			if (state == E_NO_MEM) {		// just to make sure.
 				return NULL;
 			}
@@ -242,8 +241,7 @@ void* kmalloc(unsigned int size)
 		}
 
 		*((uint32*) rett) = num_pages;
-
-		return (void*)rett;
+		return rett;
 }
 
 void kfree(void* virtual_address)
@@ -284,6 +282,7 @@ void kfree(void* virtual_address)
 		uint32 table_status =  get_page_table(ptr_page_directory,(uint32)it,&ptr_page_table);
 		struct FrameInfo *frame = get_frame_info(ptr_page_directory, (uint32)it, &ptr_page_table);
 		if (frame == NULL){return;}
+		*((uint32*)it) = 0;
 		free_frame(frame);
 		unmap_frame(ptr_page_directory, (uint32)it);
 		it+= PAGE_SIZE;
