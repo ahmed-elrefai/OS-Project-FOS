@@ -173,14 +173,7 @@ uint32 get_pgallocation_address(uint32 size) {
 
 	// if exist some free pages before pgalloc_last
 	if(pgalloc_ptr != 0 && curSize >= size)
-	{   uint32 backwards= pgalloc_ptr;
-		uint32 *backwards_ptr;
-		uint32 order = curSize/PAGE_SIZE;
-		while(order--)
-		{   backwards_ptr = (uint32 *)backwards;
-			*backwards_ptr =order;
-			backwards = backwards -PAGE_SIZE;
-		}
+	{
 		return (pgalloc_ptr);
 	}
 	return pgalloc_last;
@@ -248,15 +241,7 @@ void* kmalloc(unsigned int size)
 
 		}
 
-		uint32 towards= rett;
-		uint32 *towards_ptr;
-		uint32 order = 1;
-		while(total_size)
-		{   towards_ptr = (uint32 *)towards;
-			*towards_ptr =order++;
-			towards = towards +PAGE_SIZE;
-			total_size = total_size - PAGE_SIZE;
-		}
+		*((uint32*) rett) = num_pages;
 
 		return (void*)rett;
 }
@@ -274,74 +259,38 @@ void kfree(void* virtual_address)
 //	2. if Blk allocator | Call free
 //	3. if Pg allocator  | unmap & remove all the related frames.
 
-//	validate:
+////	validate:
 	if (virtual_address == NULL || (uint32)virtual_address > KERNEL_HEAP_MAX|| (uint32)virtual_address < KERNEL_HEAP_START)
 	{return;}
-
-	if ((uint32)virtual_address > segment_break && (uint32)virtual_address <= hard_limit+PAGE_SIZE)
-	{return;}
+//
+//	if (virtual_address > (void*)segment_break && virtual_address <= (void*)hard_limit+PAGE_SIZE)
+//	{return;}
 
 //	free: whether Blk or Pg allocator
-	if ((uint32)virtual_address <= segment_break && (uint32)virtual_address >=start_kernal_heap){
+	if (virtual_address <= (void*)segment_break && virtual_address >=(void*)start_kernal_heap){
 //		Blk allocator: call free;
 		cprintf("free using the dynalloc.\n");
 		free_block(virtual_address);
 		return;
 	}
 
+	uint32 num_pages = *((uint32*)virtual_address);
+	if (num_pages==0)
+		return;
 
-//      make sure it stands at the start of the page
-		uint32 begin = hard_limit + PAGE_SIZE;
-		uint32 remain = ((uint32)virtual_address - begin) % PAGE_SIZE;
-		uint32 correct_add =(uint32)virtual_address - remain;
-		virtual_address =(void *) correct_add;
-
-        //checking some conditions
+	void *it = virtual_address;
+	for(uint32 i = 0; i < num_pages; i++){
 		uint32 *ptr_page_table = NULL;
-		int table_status = get_page_table(ptr_page_directory, (uint32)virtual_address, &ptr_page_table);
-		if (table_status == TABLE_NOT_EXIST){panic("404 Page Table, the pg table was not found\n");}
-		struct FrameInfo *start_frame = get_frame_info(ptr_page_directory, (uint32)virtual_address, &ptr_page_table);
-		if (start_frame == NULL){panic("404 Virtual address, va is already free.\n");}
-
-		//the process
-        uint32 *current_page  = (uint32 *) virtual_address;
-        uint32 current_adress = (uint32  ) virtual_address;
-       // cprintf("current_page %x  " , current_page);
-        uint32 order = (uint32 )*current_page;
-        current_adress  = current_adress - ( (order -1) * PAGE_SIZE);
-        current_page = (uint32 *) current_adress;
-
-        if(order==0)
-        	return;
-        else if (order == 1){
-            table_status = get_page_table(ptr_page_directory, (uint32)current_adress, &ptr_page_table);
-    		if (table_status == TABLE_NOT_EXIST){return;}
-    		struct FrameInfo *frame = get_frame_info(ptr_page_directory,(uint32)current_adress,&ptr_page_table);
-    		if (frame == NULL){return;}
-    		unmap_frame(ptr_page_directory, (uint32)current_adress);
-    		free_frame(frame);
-    		current_adress  = current_adress + PAGE_SIZE;
-    		current_page = (uint32 *) current_adress;
-    		return;
-        }
-
-//        cprintf("order %d  " , order);
-//        cprintf("current_adress %x  " , current_adress);
+		uint32 table_status =  get_page_table(ptr_page_directory,(uint32)it,&ptr_page_table);
+		struct FrameInfo *frame = get_frame_info(ptr_page_directory, (uint32)it, &ptr_page_table);
+		if (frame == NULL){return;}
+		free_frame(frame);
+		unmap_frame(ptr_page_directory, (uint32)it);
+		it+= PAGE_SIZE;
+	}
 
 
 
-        while((*current_page)!=1){
-        	int32 table_status = get_page_table(ptr_page_directory, (uint32)current_adress, &ptr_page_table);
-			if (table_status == TABLE_NOT_EXIST){return;}
-        	struct FrameInfo *frame = get_frame_info(ptr_page_directory,(uint32)current_adress,&ptr_page_table);
-        	if (frame == NULL){return;}
-        	unmap_frame(ptr_page_directory, (uint32)current_adress);
-			free_frame(frame);
-			*current_page = 0;
-
-			current_adress  = current_adress + PAGE_SIZE;
-			current_page = (uint32 *) current_adress;
-        }
 }
 
 unsigned int kheap_physical_address(unsigned int virtual_address)
