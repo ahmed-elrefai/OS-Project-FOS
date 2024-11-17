@@ -174,6 +174,8 @@ void initialize_dynamic_allocator(uint32 daStart, uint32 initSizeOfAllocatedSpac
 
 void set_block_data(void* va, uint32 totalSize, bool isAllocated)
 {
+
+	cprintf("---------------set_block_data called---------------\n");
 	//TODO: [PROJECT'24.MS1 - #05] [3] DYNAMIC ALLOCATOR - set_block_data
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 
@@ -184,7 +186,7 @@ void set_block_data(void* va, uint32 totalSize, bool isAllocated)
 	uint32 blockInfo = totalSize | (uint32)isAllocated;
 	uint32 *h = (uint32*)(va - sizeof(int));
 	uint32 *f = (uint32*)(va + totalSize - 2 * sizeof(int));
-	*h = *f = (uint32)blockInfo;
+	*h = *f = blockInfo;
 
 //	cprintf("---------------------------set_block_data---------------------\n");
 //	cprintf("h  = %d \n", *h);
@@ -223,20 +225,23 @@ void *alloc_block_FF(uint32 size)
 	//panic("alloc_block_FF is not implemented yet");
 	//Your Code is Here...
 
-	struct BlockELement* allocated_block;
-	int32 totalAllocationSize = (int32)(size + 2 * sizeof(int)); // totalSize to be allocated.
+
+	cprintf("---------------alloc_block_FF called---------------\n");
+	int32 totalAllocationSize = size + 2 * sizeof(int); // totalSize to be allocated.
 
 	struct BlockElement* curMemoryBlock;
 	LIST_FOREACH(curMemoryBlock, &freeBlocksList) {
 
 		// should be even because this block is not allocated meaning the status bit = 0
-		int32 currBlockSize = (int32)get_block_size((void *)curMemoryBlock); // includes header and footer.
+
+		int32 currBlockSize = get_block_size(curMemoryBlock); // includes header and footer.
 
 		//cprintf("size of the block at %x = %d\n", curMemoryBlock, currBlockSize);
 		// header and footer of the block
 		void *curr = (void*)curMemoryBlock;
-		void *ch = (void *)(curr - sizeof(int));
-		void *cf = (void *)(ch + currBlockSize - sizeof(int));
+
+		void *ch = (void*)(curr - sizeof(int));
+		void *cf = (void*)(ch + currBlockSize - sizeof(int));
 		//cprintf("ch: %x\n", ch);
 		//cprintf("cf: %x\n", cf);
 
@@ -245,7 +250,8 @@ void *alloc_block_FF(uint32 size)
 		void* b_end = cf + sizeof(int);
 
 		// so to insert the new free portion of the current block before my next block.
-		struct BlockElement* free_block_after = (struct BlockElement*)curMemoryBlock->prev_next_info.le_next;
+
+		struct BlockElement* free_block_after = curMemoryBlock->prev_next_info.le_next;
 		//cprintf("falg000\n");
 		//cprintf("falg0\n");
 		if(currBlockSize >= totalAllocationSize) {
@@ -274,19 +280,21 @@ void *alloc_block_FF(uint32 size)
 				} else LIST_INSERT_BEFORE(&freeBlocksList, free_block_after, new_free_toInsert);
 				//		cprintf("falg02\n");
 
-				set_block_data((void *)new_free_toInsert, (uint32)new_free_block_size, 0);
+
+				set_block_data(new_free_toInsert, new_free_block_size, 0);
 
 				// change the allocated block meta data.
 				// we can do it manually by pointers or by the function set_block_data
 				// i trust the function :)
-				allocated_block = (struct BlockELement*)(ch + sizeof(int));
 
-				set_block_data((void *)allocated_block, (uint32)totalAllocationSize, 1);
+				struct BlockELement* allocated_block = (struct BlockELement*)(ch + sizeof(int));
 
+				set_block_data(allocated_block, totalAllocationSize, 1);
 
 				//cprintf("allocated block at: %p\n", allocated_block);
 				//cprintf("-> free block list size: %d\n",LIST_SIZE(&freeBlocksList));
-				return (void *)allocated_block; // return pointer to the allocated space after header.
+
+				return allocated_block; // return pointer to the allocated space after header.
 
 			} else {
 				//cprintf("flag2\n");
@@ -295,10 +303,12 @@ void *alloc_block_FF(uint32 size)
 
 				// should double check this function correctness.
 				struct BlockELement* allocated_block = (struct BlockELement*)(ch + sizeof(int));
-				set_block_data((void *)allocated_block, (uint32)currBlockSize, 1); // note the size won't change
+
+				set_block_data(allocated_block, currBlockSize, 1); // note the size won't change
 				// i just allocated it and returned its address.
 				//cprintf("-> free block list size: %d\n",LIST_SIZE(&freeBlocksList));
-				return (void *)allocated_block;
+				return allocated_block;
+
 			}
 
 
@@ -306,17 +316,19 @@ void *alloc_block_FF(uint32 size)
 
 	}
 
+
+
 	//cprintf("the called size = %d BUT RETURNED sbrk()\n", size);
 	uint32 required_size = size + 2*sizeof(int);
 	void* ret = sbrk(ROUNDUP(required_size, PAGE_SIZE)/PAGE_SIZE);
-	if(*((uint32 *) ret) == -1)
-	{
+	if(*((uint32 *) ret) == -1) {
 		return NULL;
 	}
-	end_bound = ret + (ROUNDUP(required_size, PAGE_SIZE)/PAGE_SIZE);
-	allocated_block = alloc_block_FF(size);
 
-	return (void *)allocated_block;
+	//end_bound = ret + (ROUNDUP(required_size, PAGE_SIZE));
+
+	return alloc_block_FF(size);
+
 }
 
 //=========================================
@@ -324,10 +336,13 @@ void *alloc_block_FF(uint32 size)
 //=========================================
 void *alloc_block_BF(uint32 size)
 {
+
 	//TODO: [PROJECT'24.MS1 - BONUS] [3] DYNAMIC ALLOCATOR - alloc_block_BF
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 	//panic("alloc_block_BF is not implemented yet");
 	//Your Code is Here...
+
+	cprintf("---------------alloc_block_BF called---------------\n");
 	int32 totalAllocationSize = size + 2 * sizeof(int); // totalSize to be allocated.
 	struct BlockElement* ptrMiniSize = NULL;
 	bool flag = 0;
@@ -436,13 +451,16 @@ void *alloc_block_BF(uint32 size)
 	}
 
 	//cprintf("the called size = %d BUT RETURNED sbrk()\n", size);
-	 uint32 required_size = size + 2*sizeof(int);
+
+
+	uint32 required_size = size + 2*sizeof(int);
 	void* ret = sbrk(ROUNDUP(required_size, PAGE_SIZE)/PAGE_SIZE);
+
 	if(*((uint32 *) ret) == -1)
 	{
 		return NULL;
 	}
-	end_bound = ret + (ROUNDUP(required_size, PAGE_SIZE)/PAGE_SIZE);
+
 	return alloc_block_BF(size);
 
 
@@ -466,10 +484,14 @@ void free_block(void *va)
 //	cprintf("[free before ex.]-> free block list size: %d\n",LIST_SIZE(&freeBlocksList));
 //	cprintf("-> calling free with va = %x \n", va);
 
+	cprintf("---------------free_block called---------------\n");
+
 	if(va < (begin_bound + sizeof(int)) || va >= (end_bound - sizeof(int)))
 	{  // cprintf ("bra 7dod el heappppppppppp");
 		return;
 	}
+
+	cprintf("the free is live\n");
 
 
 	if(va == NULL) {
@@ -597,6 +619,7 @@ void free_block(void *va)
 		set_block_data(curr_new_block, cur_size, 0);
 
 	}
+
 //	cprintf("[free block after ex.]-> free block list size: %d\n",LIST_SIZE(&freeBlocksList));
 //	cprintf("---------------------------\n");
 }
