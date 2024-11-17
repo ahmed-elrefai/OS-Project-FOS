@@ -43,7 +43,7 @@ int numOfKheapVACalls ;
 
 //TODO: [PROJECT'24.MS2 - #01] [1] KERNEL HEAP - add suitable code here
 
-int32 va_page_num[(int)(2<<20)]; // 4MB array to hold the page num of a certain frame.
+int32 va_page_num[(int)(2<<20)]; // 4MB array to hold the page num which mapped to a certain frame.
 
 uint32 allocated_pages_num[(int)(2<<20)]; // 4MB array to hold the num of pages allocated from page i
 // including the current page
