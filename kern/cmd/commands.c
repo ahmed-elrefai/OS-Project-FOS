@@ -65,6 +65,11 @@ struct Command commands[] =
 		{"nclock", "set replacement algorithm to Nth chance CLOCK", command_set_page_rep_nthCLOCK, 1},
 		{"modbufflength", "set the length of the modified buffer", command_set_modified_buffer_length, 1},
 		{"read_int", "read 4 bytes from a virtual address.", command_readmem_int, 1}, // makaty
+		// makaty
+		{"get_va", "get virtual address of a corresponding physical address", command_get_va, 1},
+		{"get_pha", "get physical address of a corresponding virtual address", command_get_pha, 1},
+		{"kmalloc", "allocate some kilobytes in the kernel", command_kmalloc, 1},
+		// makaty
 		//******************************//
 		/* COMMANDS WITH TWO ARGUMENTS */
 		//******************************//
@@ -126,6 +131,35 @@ int command_kernel_info(int number_of_arguments, char **arguments )
 //*****************************************************************************************//
 //***************************** PROJECT HELPERS COMMAND ***********************************//
 //*****************************************************************************************//
+
+//////makaty
+
+int command_get_va (int number_of_arguments, char **arguments) {
+	uint32 pha = (uint32)strtol(arguments[1], NULL, 16);
+	uint32 va = kheap_virtual_address(pha);
+	cprintf("the corresponding va: %x\n", va);
+
+	return 0;
+}
+
+int command_get_pha (int number_of_arguments, char **arguments) {
+	uint32 va = (uint32)strtol(arguments[1], NULL, 16);
+	uint32 pha = kheap_physical_address(va);
+	cprintf("the corresponding pha: %x\n", pha);
+
+	return 0;
+}
+
+int command_kmalloc (int number_of_arguments, char **arguments) {
+	uint32 num = (uint32)strtol(arguments[1], NULL, 10);
+	void* address = kmalloc(num*1024);
+	cprintf("allocated %d kilobytes at va: %x\n", num, address);
+
+	return 0;
+}
+
+//////makaty
+
 int command_writeusermem(int number_of_arguments, char **arguments)
 {
 	//deal with the kernel page directory

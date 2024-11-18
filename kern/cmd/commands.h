@@ -36,7 +36,6 @@ extern uint32 NUM_OF_COMMANDS ;
 //=================================================================//
 int command_help(int , char **);
 int command_kernel_info(int , char **);
-
 int command_readmem_int(int number_of_arguments, char **arguments);
 int command_calc_space(int number_of_arguments, char **arguments);
 int command_run_program(int argc, char **argv);
@@ -95,5 +94,11 @@ int command_sch_test(int number_of_arguments, char **arguments);
 
 //2023
 int command_tst(int number_of_arguments, char **arguments);
+
+
+//2024 - makaty
+int command_get_va (int , char **);
+int command_get_pha (int , char **);
+int command_kmalloc (int , char **);
 
 #endif /* KERN_CMD_COMMANDS_H_ */

@@ -212,6 +212,8 @@ struct FrameInfo {
 	// boot_allocate_space do not have valid reference count fields.
 	uint16 references;
 
+	uint32 va_page_num; // the page number in VM
+
 	struct Env *proc;
 	uint32 bufferedVA;
 	unsigned char isBuffered;
