@@ -200,6 +200,7 @@ void* sbrk(int numOfPages)
 
 //TODO: [PROJECT'24.MS2 - BONUS#2] [1] KERNEL HEAP - Fast Page Allocator
 
+
 int32 is_free_page(uint32 page_va) {
 	// page_va is the virtual address within some page , could be with offset doesn't matter.
 
@@ -213,9 +214,9 @@ uint32 get_pgallocation_address(uint32 size) {
 
 	//cprintf("%d pages needed\n", pages_needed);
 
-	void* it = start;
+	uint32 it = start;
 	uint32 curSize = 0;
-	void* pgalloc_ptr = 0;
+	uint32 pgalloc_ptr = 0;
 
 
 	for (; curSize < size && it < pgalloc_last; it += PAGE_SIZE) {
@@ -234,9 +235,10 @@ uint32 get_pgallocation_address(uint32 size) {
 		}else {
 			//cprintf("[-]occupied_Page\n");
 			curSize = 0;
-			pgalloc_ptr = NULL;
+			pgalloc_ptr = 0;
 		}
 	}
+
 
 
 	// if exist some free pages before pgalloc_last which could be used.
@@ -289,17 +291,16 @@ void* kmalloc(unsigned int size)
 //		cprintf("kmalloc2\n");
 		if (it == pgalloc_last) {
 			if((pgalloc_last + total_size) > (uint32)KERNEL_HEAP_MAX) {
-
 				return NULL;
 			}
 
 			pgalloc_last += total_size;
 		}
 
+
 //		cprintf("kmalloc3\n");
 
 		uint32 result = it;
-
 		uint32 num_pages = total_size / PAGE_SIZE;
 		for (int i = 0, cnt = num_pages; i < num_pages; i++, it += PAGE_SIZE, cnt--) {
 
@@ -310,15 +311,16 @@ void* kmalloc(unsigned int size)
 				return NULL;
 			}
 
-		state = synced_map_frame(ptr_page_directory, newFrame, it, PERM_WRITEABLE);
+
+			state = synced_map_frame(ptr_page_directory, newFrame, it, PERM_WRITEABLE);
 
 			if (state == E_NO_MEM) {		// just to make sure.
 				return NULL;
 			}
 
-		// saving the number of allocated pages.
-		uint32 page_num = ((uint32)it) / (uint32)PAGE_SIZE; // get page index
-		allocated_pages_num[page_num] = cnt;
+			// saving the number of allocated pages.
+			uint32 page_num = ((uint32)it) / (uint32)PAGE_SIZE; // get page index
+			allocated_pages_num[page_num] = cnt;
 
 
 		}
@@ -390,6 +392,7 @@ void kfree(void* virtual_address)
 
 	//you need to get the size of the given allocation using its address
 	//refer to the project presentation and documentation for details
+
 }
 
 unsigned int kheap_physical_address(unsigned int virtual_address)
