@@ -144,7 +144,6 @@ void* sbrk(int numOfPages)
 void* get_pgallocation_address(uint32 size) {
 	void* start = (void*)(hard_limit + PAGE_SIZE);
 	uint32 total_pages = ((void*)pgalloc_last - start) / PAGE_SIZE;
-	cprintf("the value of start address: %x\n", start);
 
 	void* it = start;
 	uint32 curSize = 0;
@@ -239,7 +238,6 @@ void* kmalloc(unsigned int size)
 			}
 
 		}
-
 		*((uint32*) rett) = num_pages;
 		return rett;
 }
@@ -260,14 +258,10 @@ void kfree(void* virtual_address)
 ////	validate:
 	if (virtual_address == NULL || (uint32)virtual_address > KERNEL_HEAP_MAX|| (uint32)virtual_address < KERNEL_HEAP_START)
 	{return;}
-//
-//	if (virtual_address > (void*)segment_break && virtual_address <= (void*)hard_limit+PAGE_SIZE)
-//	{return;}
 
 //	free: whether Blk or Pg allocator
 	if (virtual_address <= (void*)segment_break && virtual_address >=(void*)start_kernal_heap){
 //		Blk allocator: call free;
-		cprintf("free using the dynalloc.\n");
 		free_block(virtual_address);
 		return;
 	}
@@ -287,8 +281,6 @@ void kfree(void* virtual_address)
 		unmap_frame(ptr_page_directory, (uint32)it);
 		it+= PAGE_SIZE;
 	}
-
-
 
 }
 
