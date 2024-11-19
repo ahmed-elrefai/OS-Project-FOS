@@ -146,20 +146,34 @@ void* sys_sbrk(int numOfPages)
 
 }
 
+// Marks the 9th bit in the phsical address
+// To show that it's reserved.
+void* mark_user_page(void* va){
+	cprintf("address before marking: %x\n", va);
+	void* marked_physical_address = (void*)((uint32)va & 0x100);
+	cprintf("address after marking: %x\n", marked_physical_address);
+	return marked_physical_address;
+}
+
 //=====================================
 // 1) ALLOCATE USER MEMORY:
 //=====================================
 void allocate_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 {
-	/*====================================*/
-	/*Remove this line before start coding*/
-//	inctst();
-//	return;
-	/*====================================*/
-
+	void* va = (void*) virtual_address;
+	void* end_va = va + ROUNDUP(size, PAGE_SIZE);
+	for (; va < end_va; va+=PAGE_SIZE){
+		uint32* ptr_page_table = NULL;
+		get_page_table(ptr_page_directory, (uint32)va,&ptr_page_table);
+		// Create Page table (if needed)
+		if (ptr_page_table == NULL){
+			create_page_table(ptr_page_directory, (uint32)va);
+		}
+		mark_user_page(va);
+	}
 	//TODO: [PROJECT'24.MS2 - #13] [3] USER HEAP [KERNEL SIDE] - allocate_user_mem()
 	// Write your code here, remove the panic and write your code
-	panic("allocate_user_mem() is not implemented yet...!!");
+//	panic("allocate_user_mem() is not implemented yet...!!");
 }
 
 //=====================================

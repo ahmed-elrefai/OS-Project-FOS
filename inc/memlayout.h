@@ -202,8 +202,6 @@ extern volatile uint32 vpd[];     // VA of current page directory
 LIST_HEAD(FrameInfo_List, FrameInfo);
 typedef LIST_ENTRY(FrameInfo) Page_LIST_entry_t;
 
-
-
 struct FrameInfo {
 	/* free list link */
 	Page_LIST_entry_t prev_next_info;

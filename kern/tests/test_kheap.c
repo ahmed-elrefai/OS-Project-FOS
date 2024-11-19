@@ -1304,7 +1304,7 @@ int test_kfree_bestfirstfit()
 
 				//cprintf("-> ptr_allocations[10]: %p, acctual: %p\n", (uint32)ptr_allocations[10], (void*)ACTUAL_START);
 
-				correct = 0; cprintf("7.4 Wrong start address for the allocated space... check return address of kmalloc\n"); }
+			correct = 0; cprintf("7.4 Wrong start address for the allocated space... check return address of kmalloc\n"); }
 			if ((pf_calculate_free_frames() - freeDiskFrames) != 0) { correct = 0; cprintf("7.4 Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)\n"); }
 			if ((freeFrames - sys_calculate_free_frames()) < 30*Mega/PAGE_SIZE) { correct = 0; cprintf("7.4 Wrong allocation: pages are not loaded successfully into memory\n"); }
 			lastIndices[10] = (30*Mega)/sizeof(char) - 1;

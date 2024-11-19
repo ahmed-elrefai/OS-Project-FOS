@@ -198,7 +198,6 @@ int command_writeusermem(int number_of_arguments, char **arguments)
 	return 0;
 }
 
-
 int command_writemem_k(int number_of_arguments, char **arguments)
 {
 	unsigned char* address = (unsigned char*)strtol(arguments[1], NULL, 16)+KERNEL_BASE;

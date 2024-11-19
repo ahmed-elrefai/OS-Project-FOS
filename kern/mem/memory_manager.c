@@ -356,7 +356,6 @@ void __static_cpt(uint32 *ptr_directory, const uint32 virtual_address, uint32 **
 //
 int map_frame(uint32 *ptr_page_directory, struct FrameInfo *ptr_frame_info, uint32 virtual_address, int perm)
 {
-
 	// Fill this function in
 	uint32 physical_address = to_physical_address(ptr_frame_info);
 	uint32 *ptr_page_table;
@@ -399,7 +398,6 @@ int map_frame(uint32 *ptr_page_directory, struct FrameInfo *ptr_frame_info, uint
 	uint32 pte_available_bits = ptr_page_table[PTX(virtual_address)] & PERM_AVAILABLE;
 	ptr_page_table[PTX(virtual_address)] = CONSTRUCT_ENTRY(physical_address , pte_available_bits | perm | PERM_PRESENT);
 	/*********************************************************************************/
-
 
 	return 0;
 }
