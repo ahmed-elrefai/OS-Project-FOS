@@ -185,7 +185,7 @@ void allocate_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 {
 	void* va = (void*) virtual_address;
 	void* end_va = va + ROUNDUP(size, PAGE_SIZE);
-	uint32 page_num = (virtual_address - USER_HEAP_START) / PAGE_SIZE;
+	uint32 page_num = (virtual_address - (e->hlimit+PAGE_SIZE)) / PAGE_SIZE;
 	allocated_pages_num[page_num] = ROUNDUP(size, PAGE_SIZE) / PAGE_SIZE;
 	for (; va < end_va; va+=PAGE_SIZE){
 		uint32* ptr_page_table = NULL;
