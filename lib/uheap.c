@@ -20,7 +20,7 @@ void* malloc(uint32 size)
 {
 	//==============================================================
 	//DON'T CHANGE THIS CODE========================================
-	if (size == 0) return NULL ;
+	if (size == 0 || size > myEnv->page_WS_max_size) return NULL ;
 	//==============================================================
 	//TODO: [PROJECT'24.MS2 - #12] [3] USER HEAP [USER SIDE] - malloc()
 	// Write your code here, remove the panic and write your code
@@ -29,10 +29,22 @@ void* malloc(uint32 size)
 	uint32 target = 0;
 	uint32 size_counter = 0;
 	if (sys_isUHeapPlacementStrategyFIRSTFIT()){
-		while (size_counter < size && va < myEnv->sbreak){
-			if ((va & 0x100) != 0){size_counter+=PAGE_SIZE;}
+		if (size <= DYN_ALLOC_MAX_SIZE){
+			return alloc_block_FF(size);
+		}else{
+			while (size_counter < size && va < myEnv->sbreak){
+				if ((va & 0x100) != 0){
+					size_counter+=PAGE_SIZE;
+				}else {
+					size_counter = 0;
+					target = va;
+				}
+			}
+			if (size_counter < size){return NULL;} // failed to allocate.
+			sys_allocate_user_mem(target, size);
 		}
 	}
+
 	return (void*)target;
 	//Use sys_isUHeapPlacementStrategyFIRSTFIT() and	sys_isUHeapPlacementStrategyBESTFIT()
 	//to check the current strategy

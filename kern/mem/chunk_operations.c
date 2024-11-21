@@ -120,6 +120,29 @@ uint32 calculate_required_frames(uint32* page_directory, uint32 sva, uint32 size
 //=====================================
 /* DYNAMIC ALLOCATOR SYSTEM CALLS */
 //=====================================
+
+//uint32 is_marked_page(uint32 va) {
+//    // check if the 9th bit is set to 1, if not return 0
+//
+//    uint32* ptr_page_table;
+//    int status = get_page_table(myEnv->env_page_directory, va, &ptr_page_table);
+//    if(status == TABLE_NOT_EXIST) {
+//        return 0;
+//    }
+//
+//    /*
+//
+//masking to get the 9th bit
+//va       -> 00000000 00000000 00101100 11011001
+//mask     -> 00000000 00000000 00000010 00000000
+//mask&va     -> 00000000 00000000 00000000 00000000*/
+//
+//    uint32 entry = ptr_page_table[PTX(va)];
+//    uint32 mask = (1 << 9);
+//    return (entry&mask); // if 0 its not marked , if other it is set
+//}
+
+
 void* sys_sbrk(int numOfPages)
 {
 	/* numOfPages > 0: move the segment break of the current user program to increase the size of its heap
@@ -162,6 +185,8 @@ void allocate_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 {
 	void* va = (void*) virtual_address;
 	void* end_va = va + ROUNDUP(size, PAGE_SIZE);
+	uint32 page_num = (virtual_address - USER_HEAP_START) / PAGE_SIZE;
+	allocated_pages_num[page_num] = ROUNDUP(size, PAGE_SIZE) / PAGE_SIZE;
 	for (; va < end_va; va+=PAGE_SIZE){
 		uint32* ptr_page_table = NULL;
 		get_page_table(e->env_page_directory, (uint32)va,&ptr_page_table);
