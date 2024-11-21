@@ -108,7 +108,6 @@ struct Env {
 	int priority;					// Current priority
 	char prog_name[PROGNAMELEN];	// Program name (to print it via USER.cprintf in multitasking)
 	void* channel;					// Address of the channel that it's blocked (sleep) on it
-
 	//================
 	/*ADDRESS SPACE*/
 	//================
@@ -123,6 +122,11 @@ struct Env {
 	//TODO: [PROJECT'24.MS2 - #10] [3] USER HEAP - add suitable code here
 
 	//=======================================================================
+	uint32 start;
+	uint32 sbreak;
+	uint32 hlimit;
+	uint32 allocated_pages_num[524288];
+
 	//for page file management
 	uint32* disk_env_pgdir;
 	//2016
@@ -138,6 +142,7 @@ struct Env {
 	//================
 	//page working set management
 	unsigned int page_WS_max_size;					//Max allowed size of WS
+
 #if USE_KHEAP
 	struct WS_List page_WS_list ;					//List of WS elements
 	struct WorkingSetElement* page_last_WS_element;	//ptr to last inserted WS element

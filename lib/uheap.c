@@ -24,8 +24,16 @@ void* malloc(uint32 size)
 	//==============================================================
 	//TODO: [PROJECT'24.MS2 - #12] [3] USER HEAP [USER SIDE] - malloc()
 	// Write your code here, remove the panic and write your code
-	panic("malloc() is not implemented yet...!!");
-	return NULL;
+//	panic("malloc() is not implemented yet...!!");
+	uint32 va = myEnv->start;
+	uint32 target = 0;
+	uint32 size_counter = 0;
+	if (sys_isUHeapPlacementStrategyFIRSTFIT()){
+		while (size_counter < size && va < myEnv->sbreak){
+			if ((va & 0x100) != 0){size_counter+=PAGE_SIZE;}
+		}
+	}
+	return (void*)target;
 	//Use sys_isUHeapPlacementStrategyFIRSTFIT() and	sys_isUHeapPlacementStrategyBESTFIT()
 	//to check the current strategy
 

@@ -151,7 +151,50 @@ void fault_handler(struct Trapframe *tf)
 			//TODO: [PROJECT'24.MS2 - #08] [2] FAULT HANDLER I - Check for invalid pointers
 			//(e.g. pointing to unmarked user heap page, kernel or wrong access rights),
 			//your code is here
-
+			int is_page_read_only(uint32 fault_va) {
+				uint32 *ptr_page_table = NULL;
+				uint32 x;
+				get_page_table(ptr_page_directory, fault_va,&ptr_page_table);
+				if (ptr_page_table  != NULL)
+				{
+					x=(ptr_page_table[PTX(fault_va)])&(PERM_WRITEABLE);
+				}
+				if(x==0){
+				   return 1;
+				 }
+				else
+			    {
+				   return 0;
+			    }
+			}
+			int is_page_unmarked(uint32 fault_va){
+				uint32 *ptr_page_table = NULL;
+				uint32 y;
+				get_page_table(ptr_page_directory, fault_va, &ptr_page_table);
+				if (ptr_page_table  != NULL)
+				{
+					y=(ptr_page_table[PTX(fault_va)])&(PERM_USER);
+				}
+				if(y==0)
+					return 1;
+				else
+					return 0;
+			 }
+			if(fault_va >= KERNEL_BASE){
+				env_exit();
+			}
+			if(is_page_read_only(fault_va))
+			{
+				env_exit();
+			}
+			if(is_page_unmarked(fault_va))
+			{
+				env_exit();
+			}
+			else
+			{
+				cprintf("valid");
+			}
 			/*============================================================================================*/
 		}
 
@@ -227,7 +270,7 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 		//cprintf("PLACEMENT=========================WS Size = %d\n", wsSize );
 		//TODO: [PROJECT'24.MS2 - #09] [2] FAULT HANDLER I - Placement
 		// Write your code here, remove the panic and write your code
-		panic("page_fault_handler().PLACEMENT is not implemented yet...!!");
+		//panic("page_fault_handler().PLACEMENT is not implemented yet...!!");
 
 		//refer to the project presentation and documentation for details
 	}
