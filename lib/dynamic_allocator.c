@@ -101,6 +101,7 @@ void initialize_dynamic_allocator(uint32 daStart, uint32 initSizeOfAllocatedSpac
 			return ;
 		is_initialized = 1;
 	}
+
 	//==================================================================================
 	//==================================================================================
 

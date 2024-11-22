@@ -39,6 +39,35 @@ void free(void* virtual_address)
 	//TODO: [PROJECT'24.MS2 - #14] [3] USER HEAP [USER SIDE] - free()
 	// Write your code here, remove the panic and write your code
 	panic("free() is not implemented yet...!!");
+
+	if (virtual_address == NULL) {
+			panic("ufree() : the provided address is NULL..!!");
+			return;
+	}
+
+	//	free: whether Blk or Pg allocator
+	if ((char*)virtual_address < (char*)(myEnv->sbreak - sizeof(int)) && (char*)virtual_address >= (char*)(myEnv->start + sizeof(int))) {
+		// block allocator: call free;
+		cprintf("(user free)free using the dynalloc.\n");
+		free_block(virtual_address);
+		return;
+	} else if((char*)virtual_address >= (char*)(myEnv->hlimit + sizeof(int)) && (char*)virtual_address < (char*)KERNEL_HEAP_MAX) {
+		// unmark pages and free them
+
+		// get the size of the current allocated pages
+		uint32 page_num = (virtual_address - USER_HEAP_START)/PAGE_SIZE;
+		uint32 pages = myEnv->allocated_pages_num[page_num];
+
+		// unmark the allocated pages
+		uint32 va = virtual_address;
+		for(uint32 i = 0 ; i < pages ; i++, va += PAGE_SIZE) {
+			unmark_page(va);
+		}
+
+		sys_free_user_mem((void*)virtual_address, (pages * PAGE_SIZE));
+	} else {
+		panic("(user free) the provided address is invalid!\n");
+	}
 }
 
 

@@ -95,6 +95,9 @@ struct Context {
   uint32 eip;
 };
 
+
+
+
 struct Env {
 	//================
 	/*MAIN INFO...*/
@@ -123,6 +126,12 @@ struct Env {
 	//TODO: [PROJECT'24.MS2 - #10] [3] USER HEAP - add suitable code here
 
 	//=======================================================================
+	uint32 start;
+	uint32 sbreak;
+	uint32 hlimit;
+	uint32 allocated_pages_num[524290]; // stores the size of the allocation starting from page i
+	void* end_bound;
+
 	//for page file management
 	uint32* disk_env_pgdir;
 	//2016
