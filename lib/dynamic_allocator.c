@@ -175,7 +175,7 @@ void initialize_dynamic_allocator(uint32 daStart, uint32 initSizeOfAllocatedSpac
 void set_block_data(void* va, uint32 totalSize, bool isAllocated)
 {
 
-	cprintf("---------------set_block_data called---------------\n");
+//	cprintf("---------------set_block_data called---------------\n");
 	//TODO: [PROJECT'24.MS1 - #05] [3] DYNAMIC ALLOCATOR - set_block_data
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 
@@ -226,7 +226,7 @@ void *alloc_block_FF(uint32 size)
 	//Your Code is Here...
 
 
-	cprintf("---------------alloc_block_FF called---------------\n");
+//	cprintf("---------------alloc_block_FF called---------------\n");
 	int32 totalAllocationSize = size + 2 * sizeof(int); // totalSize to be allocated.
 
 	struct BlockElement* curMemoryBlock;

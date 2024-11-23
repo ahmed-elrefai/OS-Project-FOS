@@ -51,7 +51,7 @@ void synced_unmap_frame(uint32 *ptr_page_directory, uint32 virtual_address) {
 //	Otherwise (if no memory OR initial size exceed the given limit): PANIC
 int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate, uint32 daLimit)
 {
-	cprintf("---------------initialize_kheap_dynamic_allocator called---------------\n");
+//	cprintf("---------------initialize_kheap_dynamic_allocator called---------------\n");
 	//TODO: [PROJECT'24.MS2 - #01] [1] KERNEL HEAP - initialize_kheap_dynamic_allocator
 	// Write your code here, remove the panic and write your code
 	//panic("initialize_kheap_dynamic_allocator() is not implemented yet...!!");
@@ -87,9 +87,9 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 	//2.2 allocate all pages and map
 	uint32 number_of_pages = ROUNDUP(initSizeToAllocate, PAGE_SIZE) / PAGE_SIZE; // 1007617 = (daStart - KERNEL_HEAP_MAX) ,,, (daStart + initSizeToAllocate )
 	//print
-	cprintf("dastart : %x \n", daStart);
-	cprintf("daLimit : %x \n", hard_limit);
-	cprintf("number_of_pages : %d \n", number_of_pages);
+//	cprintf("dastart : %x \n", daStart);
+//	cprintf("daLimit : %x \n", hard_limit);
+//	cprintf("number_of_pages : %d \n", number_of_pages);
 	//page address
     uint32 va = daStart;
 	for(uint32 i = 0 ; i < number_of_pages ; i++)
@@ -268,7 +268,7 @@ void* kmalloc(unsigned int size)
 		//	SIZE VALIDATION:
 		if(size <= DYN_ALLOC_MAX_BLOCK_SIZE) {
 			void* ret =  alloc_block_FF(size);
-			cprintf("[block allocator]the returned kmalloc address: %p\n", ret);
+//			cprintf("[block allocator]the returned kmalloc address: %p\n", ret);
 			return ret;
 		}
 
@@ -326,7 +326,7 @@ void* kmalloc(unsigned int size)
 		}
 //		cprintf("kmalloc4\n");
 
-		cprintf("[page allocator]the returned kmalloc address: %p\n", result);
+//		cprintf("[page allocator]the returned kmalloc address: %p\n", result);
 		return (void*)result;
 }
 
@@ -350,7 +350,7 @@ void kfree(void* virtual_address)
 	//	free: whether Blk or Pg allocator
 	if ((char*)virtual_address < (char*)segment_break && (char*)virtual_address >= (char*)(start_kernal_heap + sizeof(int))) {
 		// block allocator: call free;
-		cprintf("free using the dynalloc.\n");
+//		cprintf("free using the dynalloc.\n");
 		free_block(virtual_address);
 		return;
 	} else if((char*)virtual_address >= (char*)(hard_limit + sizeof(int)) && (char*)virtual_address < (char*)KERNEL_HEAP_MAX) {

@@ -21,10 +21,18 @@ inline struct WorkingSetElement* env_page_ws_list_create_element(struct Env* e, 
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 	//panic("env_page_ws_list_create_element is not implemented yet");
 	//Your Code is Here...
-	struct WorkingSetElement *ws_element=kmalloc(sizeof(struct WorkingSetElement));
+	struct WorkingSetElement *ws_element=(struct WorkingSetElement *)kmalloc(sizeof(struct WorkingSetElement));
 	ws_element->virtual_address=virtual_address;
+	if(e->page_last_WS_element == NULL){
+	     LIST_INSERT_TAIL(&(e->ActiveList),ws_element);
+	}
+	else{
+		cprintf("full working set");
+	}
+	env_page_ws_print(e);
 	return ws_element;
 }
+
 inline void env_page_ws_invalidate(struct Env* e, uint32 virtual_address)
 {
 	if (isPageReplacmentAlgorithmLRU(PG_REP_LRU_LISTS_APPROX))

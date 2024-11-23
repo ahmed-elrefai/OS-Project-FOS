@@ -171,11 +171,8 @@ void* sys_sbrk(int numOfPages)
 
 // Marks the 9th bit in the phsical address
 // To show that it's reserved.
-void* mark_user_page(void* va){
-	cprintf("address before marking: %x\n", va);
-	void* marked_physical_address = (void*)((uint32)va & 0x100);
-	cprintf("address after marking: %x\n", marked_physical_address);
-	return marked_physical_address;
+void mark_user_page(void* va){
+	va = (void*)((uint32)va & 0x100);
 }
 
 //=====================================

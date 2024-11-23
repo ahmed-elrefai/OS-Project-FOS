@@ -125,7 +125,7 @@ struct Env {
 	uint32 start;
 	uint32 sbreak;
 	uint32 hlimit;
-	uint32 allocated_pages_num[524288];
+	uint32 allocated_pages_num[500];
 
 	//for page file management
 	uint32* disk_env_pgdir;
