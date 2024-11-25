@@ -7,8 +7,6 @@
 #include <inc/assert.h>
 #include <inc/string.h>
 #include "../inc/dynamic_allocator.h"
-
-
 //==================================================================================//
 //============================== GIVEN FUNCTIONS ===================================//
 //==================================================================================//
@@ -106,6 +104,12 @@ void initialize_dynamic_allocator(uint32 daStart, uint32 initSizeOfAllocatedSpac
 
 	//TODO: [PROJECT'24.MS1 - #04] [3] DYNAMIC ALLOCATOR - initialize_dynamic_allocator
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
+
+
+	if(initSizeOfAllocatedSpace == 0) {
+		// user heap space
+		return;
+	}
 
 	//Your Code is Here...
 	void *Begin_elblock = (void*) daStart;

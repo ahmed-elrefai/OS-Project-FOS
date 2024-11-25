@@ -1,5 +1,6 @@
 #include <inc/lib.h>
 
+
 //==================================================================================//
 //============================ REQUIRED FUNCTIONS ==================================//
 //==================================================================================//
@@ -21,8 +22,7 @@ void* sbrk(int increment)
 int32 uhis_free_page(uint32 page_va) {
 	// page_va is the virtual address within some page , could be with offset doesn't matter.
 	uint32 page_num = page_va / PAGE_SIZE;
-	return 0;
-	//(myEnv->is_allocated[page_num] == PAGE_FREE);
+	return (myEnv->mark_status[page_num] == PAGE_FREE);
 }
 
 uint32 uhget_pgallocation_address(uint32 size) {
@@ -38,18 +38,13 @@ uint32 uhget_pgallocation_address(uint32 size) {
 
 	for (; curSize < size && it < pg_alloc_last; it += PAGE_SIZE) {
 
-//		uint32 *ptr_table = NULL;
-//		struct FrameInfo *ptr_frame_info = get_frame_info(page_directory, it, &ptr_table);
-
 		if (uhis_free_page(it)) { // if free page
-			//cprintf("[-]free_Page\n");
 			if(curSize == 0) {
 				pgalloc_ptr = it;
 			}
 			curSize += PAGE_SIZE;
 
-		}else {
-			//cprintf("[-]occupied_Page\n");
+		}else {	// if marked for another space
 			curSize = 0;
 			pgalloc_ptr = 0;
 		}
@@ -59,11 +54,9 @@ uint32 uhget_pgallocation_address(uint32 size) {
 
 	// if exist some free pages before pgalloc_last which could be used.
 	if(pgalloc_ptr != 0 && curSize >= size) {
-		//cprintf("[-]returning pgalloc_ptr -> pages found before pgalloc_last\n");
 		return pgalloc_ptr;
 	}
 
-	//cprintf("[-]returning pgalloc_last\n");
 	return pg_alloc_last;
 
 }
@@ -94,9 +87,9 @@ void* malloc(uint32 size)
 			uint32 result = uhget_pgallocation_address(total_size);
 			if (result == myEnv->pgalloc_last) {
 
-			if((myEnv->pgalloc_last + total_size) > (uint32)USER_HEAP_MAX) {
-				return NULL;
-			}
+				if((myEnv->pgalloc_last + total_size) > (uint32)USER_HEAP_MAX) {
+					return NULL;
+				}
 
 				myEnv->pgalloc_last += total_size;
 			}

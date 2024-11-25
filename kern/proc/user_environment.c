@@ -1,5 +1,6 @@
 /* See COPYRIGHT for copyright information. */
 
+
 #include <inc/x86.h>
 #include <inc/mmu.h>
 #include <inc/error.h>
@@ -869,13 +870,13 @@ void* create_user_kern_stack(uint32* ptr_user_page_directory) {
     // Write your code here, remove the panic and write your code
     //panic("create_user_kern_stack() is not implemented yet...!!");
 
-	cprintf("---------------create_user_kern_stack called----------------- \n");
+	//cprintf("---------------create_user_kern_stack called----------------- \n");
     void* kernel_stack = kmalloc(KERNEL_STACK_SIZE);//allocate memory in kernel space
     if(kernel_stack == NULL) {
         panic("allocation failed for kernel stack\n");
     }
 
-    cprintf("ksva: %p  |  %d\n", kernel_stack, (uint32)kernel_stack);
+    //cprintf("ksva: %p  |  %d\n", kernel_stack, (uint32)kernel_stack);
 
     uint32 *page_table = NULL;
     int status = get_page_table(ptr_user_page_directory, (uint32)kernel_stack, &page_table);
@@ -883,7 +884,7 @@ void* create_user_kern_stack(uint32* ptr_user_page_directory) {
 
     if (status != TABLE_IN_MEMORY) {
     	page_table = create_page_table(ptr_user_page_directory, (uint32)kernel_stack);
-    	cprintf("error404\n");
+    	cprintf("error404, see stack function\n");
     }
 
     //page_table[PTX(kernel_stack)] = page_table[PTX(kernel_stack)] & (~PERM_PRESENT);
@@ -938,15 +939,15 @@ void initialize_uheap_dynamic_allocator(struct Env* e, uint32 daStart, uint32 da
 	//	2) call the initialize_dynamic_allocator(..) to complete the initialization
 	//panic("initialize_uheap_dynamic_allocator() is not implemented yet...!!");
 
+	//dynalloc
 	e->start = daStart;
 	e->sbreak = daStart;
 	e->hlimit = daLimit;
+
+	//page alloc
 	e->pgalloc_last = daLimit + PAGE_SIZE;
 
-	// initializing the list holding the sizes of allocated pages.
-	//memset(e->is_allocated, 0, sizeof(e->is_allocated));
-	memset(e->is_marked, 0, sizeof(e->is_marked));
-
+	memset(e->mark_status, 0, sizeof(e->mark_status));
 	initialize_dynamic_allocator(daStart, 0);
 
 }

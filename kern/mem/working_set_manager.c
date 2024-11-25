@@ -20,7 +20,7 @@ inline struct WorkingSetElement* env_page_ws_list_create_element(struct Env* e, 
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 	//panic("env_page_ws_list_create_element is not implemented yet");
 	//Your Code is Here...
-	cprintf("env_page_ws_list_create_element called \n");
+	//cprintf("env_page_ws_list_create_element called \n");
 	struct WorkingSetElement *ws_element = (struct WorkingSetElement *) kmalloc((uint32)sizeof(struct WorkingSetElement));
 	if(ws_element == NULL) { // no memory
 		panic("no enough memory for creating ws element!!\n");

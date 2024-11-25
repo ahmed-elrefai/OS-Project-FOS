@@ -4,6 +4,7 @@
 #include <inc/dynamic_allocator.h>
 #include "memory_manager.h"
 
+
 // helper functions //
 int synced_map_frame(uint32 *ptr_page_directory, struct FrameInfo *ptr_frame_info, uint32 virtual_address, int perm) {
 
@@ -20,7 +21,7 @@ int synced_map_frame(uint32 *ptr_page_directory, struct FrameInfo *ptr_frame_inf
 	// saving virtual address.
 	va_page_num[frame_num] = (virtual_address/PAGE_SIZE);
 
-	return 0;
+	return status;
 
 }
 
@@ -68,6 +69,7 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 	start_kernal_heap =  daStart;
 	segment_break = start_kernal_heap + initSizeToAllocate;
 	hard_limit = daLimit;
+	pgalloc_last = (hard_limit + PAGE_SIZE);
 
 	if(daStart + initSizeToAllocate > hard_limit)
 	{
@@ -76,13 +78,14 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 
 	//step2
 	//2.1 create table if   doesn't exist (for sure)
-	uint32 *check_page_table = NULL;
-	int32 r = get_page_table(ptr_page_directory , start_kernal_heap , &check_page_table);
-	if(r!=TABLE_IN_MEMORY)
-	{
-		create_page_table(ptr_page_directory ,  start_kernal_heap);
-		panic("initialize_kheap_dynamic_allocator() tableee ..!!");
-	}
+//	uint32 *check_page_table = NULL;
+//	int32 r = get_page_table(ptr_page_directory , start_kernal_heap , &check_page_table);
+//	if(r!=TABLE_IN_MEMORY) {
+//		//check_page_table = (uint32*)
+//		create_page_table(ptr_page_directory ,  start_kernal_heap);
+//		panic("initialize_kheap_dynamic_allocator() tableee ..!!");
+//	}
+
 	//2.2 allocate all pages and map
 	uint32 number_of_pages = ROUNDUP(initSizeToAllocate, PAGE_SIZE) / PAGE_SIZE; // 1007617 = (daStart - KERNEL_HEAP_MAX) ,,, (daStart + initSizeToAllocate )
 	//print
@@ -91,29 +94,25 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 	cprintf("number_of_pages : %d \n", number_of_pages);
 	//page address
     uint32 va = daStart;
-	for(uint32 i = 0 ; i < number_of_pages ; i++)
+	for(uint32 i = 0 ; i < number_of_pages ; i++, va = va + PAGE_SIZE)
 	{
+		uint32 *check_page_table = NULL;
+		int32 r = get_page_table(ptr_page_directory , va , &check_page_table);
+		if(r != TABLE_IN_MEMORY) {
+			check_page_table = (uint32*)create_page_table(ptr_page_directory , va);
+		}
+
 		struct FrameInfo *ptr_frame_info;
         int ret = allocate_frame(&ptr_frame_info);
+
         if(ret == E_NO_MEM){
         	panic("initialize_kheap_dynamic_allocator() no memory ..!!");
         }
 
         int rrr = synced_map_frame(ptr_page_directory , ptr_frame_info , va , PERM_PRESENT | PERM_WRITEABLE);
-        //map_frame(ptr_page_directory , ptr_frame_info , va , PERM_WRITEABLE);
-
-        if(rrr != 0){
-			cprintf("count : %d , rrr: %d", i, ret);
-			panic("initialize_kheap_dynamic_allocator() not mapped ..!!");
-		}
-        va = va + PAGE_SIZE;
 	}
 
-	cprintf("va : %x \n", va);
-	pgalloc_last = (hard_limit + PAGE_SIZE);
-
 	initialize_dynamic_allocator(start_kernal_heap , initSizeToAllocate);
-	//panic("initialize_kheap_dynamic_allocator() no memory ..!!");
 	return 0;
 }
 
@@ -154,13 +153,20 @@ void* sbrk(int numOfPages)
 	//page address
 	uint32 va = segment_break;
 
-	for(int32 i = 0 ; i < numOfPages ; i++)
+	for(int32 i = 0 ; i < numOfPages ; i++,  va += PAGE_SIZE)
 	{
 
+		// checking for the page table
 		uint32 *ptr_table = NULL;
+		int pg_status = get_page_table(ptr_page_directory , va , &ptr_table);
+		if(pg_status == TABLE_NOT_EXIST) {
+			ptr_table = (uint32*)create_page_table(ptr_page_directory , va);
+		}
+
 		struct FrameInfo *ptr_frame_info = get_frame_info(ptr_page_directory , va , &ptr_table);
 		if(ptr_frame_info != NULL){
 			// this shouldn't execute at all
+			cprintf("LOL\n");
 			continue;
 		}
 
@@ -169,7 +175,7 @@ void* sbrk(int numOfPages)
         	return (void *)E_UNSPECIFIED;
         }
         synced_map_frame(ptr_page_directory , ptr_frame_info , va ,  PERM_PRESENT | PERM_WRITEABLE);
-        va += PAGE_SIZE;
+
 	}
 
 	//cprintf("->>>%d,  ->>%d\n", (void*)(va - sizeof(int))-(void*)(segment_break - sizeof(int)), increasing);
@@ -181,10 +187,11 @@ void* sbrk(int numOfPages)
 
 	*end_last_page = 1;
 
-	set_block_data((void*)newBlock , increasing , 1);
-
 	// you have to set bounds first before calling free as it checks for them
 	end_bound = (void*) end_last_page;
+
+	set_block_data((void*)newBlock , increasing , 1);
+
 
 	free_block((void*)newBlock);
 
@@ -209,8 +216,8 @@ uint32 get_pgallocation_address(uint32 size, uint32 start, uint32* page_director
 
 	for (; curSize < size && it < pg_alloc_last; it += PAGE_SIZE) {
 
-		uint32 *ptr_table = NULL;
-		struct FrameInfo *ptr_frame_info = get_frame_info(page_directory, it, &ptr_table);
+//		uint32 *ptr_table = NULL;
+//		struct FrameInfo *ptr_frame_info = get_frame_info(page_directory, it, &ptr_table);
 
 		if (khis_free_page(it)) { // if free page
 			//cprintf("[-]free_Page\n");
@@ -234,8 +241,9 @@ uint32 get_pgallocation_address(uint32 size, uint32 start, uint32* page_director
 		return pgalloc_ptr;
 	}
 
-	//cprintf("[-]returning pgalloc_last\n");
+	cprintf("[-]returning pgalloc_last\n");
 	return pg_alloc_last;
+
 
 }
 
@@ -251,7 +259,6 @@ void* kmalloc(unsigned int size)
 //    3. allocate physical frame
 //    4. map virtual to physical
 
-		//cprintf("last allocated pg: %x\n", pgalloc_last);
 
 		//	SIZE VALIDATION:
 		if(size <= DYN_ALLOC_MAX_BLOCK_SIZE) {
@@ -260,57 +267,52 @@ void* kmalloc(unsigned int size)
 			return ret;
 		}
 
-		if (size > (KERNEL_HEAP_MAX - pgalloc_last)) {
-			//cprintf("trying to allocate greater than limit\n");
-			return NULL;
-		}
-
-//		cprintf("kmalloc0\n");
-
-		// variable total size multiple of page size
+		// total size is now multiple of page_size
 		uint32 total_size = ((size + PAGE_SIZE - 1)/PAGE_SIZE) * PAGE_SIZE;
-		//cprintf("the req size: %d, processed: %d\n", size, total_size);
 
+		//cprintf("----------kmalloc page_alloc called with size: %d, %d pages----------\n", total_size, total_size/PAGE_SIZE);
 
-//		cprintf("kmalloc1\n");
-
-//		ALLOCATE  & MAP
 		uint32 it = get_pgallocation_address((uint32)total_size, hard_limit+PAGE_SIZE, ptr_page_directory, pgalloc_last);
-//		cprintf("kmalloc2\n");
+		// the problem here................
+		// in returning null
+
+		cprintf("called size: %u, total_size: %u, it: %p\n", size, total_size, (void*)it);
+		cprintf("pgalloc_last: %u\n", pgalloc_last);
+		cprintf("KHM: %u\n", (uint32)KERNEL_HEAP_MAX);
+		cprintf("wanted pages: %u\n", total_size/PAGE_SIZE);
+		cprintf("MX page: %u\n", (KERNEL_HEAP_MAX/PAGE_SIZE));
+		cprintf("last_ptr page: %u\n", (pgalloc_last/PAGE_SIZE));
+		cprintf("av pages: %u\n", (KERNEL_HEAP_MAX/PAGE_SIZE)-(pgalloc_last/PAGE_SIZE));
+
+
+		//		ALLOCATE  & MAP
 		if (it == pgalloc_last) {
-			if((pgalloc_last + total_size) > (uint32)KERNEL_HEAP_MAX) {
+			cprintf("inside\n");
+			if (total_size > (KERNEL_HEAP_MAX - pgalloc_last)) {
+				cprintf("[kmalloc ret = null]no enough memory available\n");
 				return NULL;
 			}
-
 			pgalloc_last += total_size;
 		}
 
-//		cprintf("kmalloc3\n");
-
 		uint32 result = it;
-		uint32 num_pages = (total_size+PAGE_SIZE-1)/PAGE_SIZE;
+		uint32 num_pages = total_size/PAGE_SIZE;
 		for (int i = 0, cnt = num_pages; i < num_pages; i++, it += PAGE_SIZE, cnt--) {
+			//cprintf("flag2\n");
 
 			struct FrameInfo *newFrame = NULL;
 			int state = allocate_frame(&newFrame);
-
 			if (state == E_NO_MEM) {
 				return NULL;
 			}
 
 			state = synced_map_frame(ptr_page_directory, newFrame, it, PERM_PRESENT | PERM_WRITEABLE);
-			if (state == E_NO_MEM) {		// just to make sure.
-				return NULL;
-			}
 
 			// saving the number of allocated pages.
-			uint32 page_num = ((uint32)it) / (uint32)PAGE_SIZE; // get page index
+			uint32 page_num = ((uint32)it) / (uint32)PAGE_SIZE;
 			allocated_pages_num[page_num] = cnt;
 
-
 		}
-//		cprintf("kmalloc4\n");
-
 
 
 		cprintf("[page allocator]the returned kmalloc address: %p\n", result);
@@ -334,12 +336,12 @@ void kfree(void* virtual_address)
 	}
 
 	//	free: whether Blk or Pg allocator
-	if ((char*)virtual_address < (char*)segment_break && (char*)virtual_address >= (char*)(start_kernal_heap + sizeof(int))) {
+	if ((char*)virtual_address < (char*)segment_break && (char*)virtual_address >= (char*)start_kernal_heap) {
 		// block allocator: call free;
 		cprintf("free using the dynalloc.\n");
 		free_block(virtual_address);
 		return;
-	} else if((char*)virtual_address >= (char*)(hard_limit + sizeof(int)) && (char*)virtual_address < (char*)KERNEL_HEAP_MAX) {
+	} else if((char*)virtual_address >= (char*)(hard_limit + PAGE_SIZE) && (char*)virtual_address < (char*)KERNEL_HEAP_MAX) {
 		// page allocator free
 		int page_num = ((uint32)virtual_address) / (uint32)PAGE_SIZE;
 		uint32 num_of_pages = allocated_pages_num[page_num];
@@ -347,16 +349,18 @@ void kfree(void* virtual_address)
 		// if no pages allocated
 		if (num_of_pages == 0) return;
 
-
 		void *it = virtual_address;
 		for(uint32 i = 0; i < num_of_pages; i++, it += PAGE_SIZE){
 			uint32 *ptr_page_table = NULL;
 			uint32 table_status =  get_page_table(ptr_page_directory, (uint32)it, &ptr_page_table);
+			if(table_status == TABLE_NOT_EXIST) {
+				ptr_page_table = (uint32*)create_page_table(ptr_page_directory, (int32)it);
+			}
 			struct FrameInfo *frame = get_frame_info(ptr_page_directory, (uint32)it, &ptr_page_table);
-			if (frame == NULL){return;}
+			if (frame == NULL){continue;}
+
 			free_frame(frame);
 			synced_unmap_frame(ptr_page_directory, (uint32)it);
-
 
 			// updating the pages array ... necessary to detect if the page is free or not
 			uint32 page_num = ((uint32)it) / (uint32)PAGE_SIZE; // get page index
@@ -366,7 +370,7 @@ void kfree(void* virtual_address)
 
 		// move the  pgalloc_last pointer down if exist some free pages before it.
 		uint32 ptr = pgalloc_last - PAGE_SIZE;
-		while(ptr >= (hard_limit + sizeof(int)) && khis_free_page(ptr)) {
+		while(ptr >= (hard_limit + PAGE_SIZE) && khis_free_page(ptr)) {
 			pgalloc_last -= PAGE_SIZE;
 			ptr -= PAGE_SIZE;
 		}

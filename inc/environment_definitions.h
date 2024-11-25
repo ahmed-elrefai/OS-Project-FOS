@@ -53,9 +53,9 @@ unsigned int _ModifiedBufferLength;
 #define ENV_UNKNOWN		6
 
 //makaty
-#define PAGE_ALLOCATED 		1
 #define PAGE_FREE 			0
-#define PAGE_ALLOC_START 	2
+#define PAGE_MARKED 		1
+#define PAGE_MARK_START 	2
 //makaty
 
 LIST_HEAD(Env_Queue, Env);		// Declares 'struct Env_Queue'
@@ -104,7 +104,7 @@ struct Context {
 
 
 
-
+//#define MESSAGE_DEBUG 1
 
 
 struct Env {
@@ -141,7 +141,7 @@ struct Env {
 	uint32 end_bound;
 	//FrameInfo
 	//uint8 is_allocated[(2<<18)];
-	uint8 is_marked[1];
+	uint8 mark_status[(1<<18)];
 	///453376//
 	uint32 pgalloc_last;
 	// 524290
