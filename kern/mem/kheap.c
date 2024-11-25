@@ -57,6 +57,7 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 
 
 
+
 	// initialize allocated_pages_num to 0s means no pages allocated starting from any page.
 	// initialize va_page_num to -1 means no mapping yet.
 	memset(allocated_pages_num, 0, sizeof(allocated_pages_num));
@@ -98,7 +99,7 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
         	panic("initialize_kheap_dynamic_allocator() no memory ..!!");
         }
 
-        int rrr = synced_map_frame(ptr_page_directory , ptr_frame_info , va , PERM_WRITEABLE);
+        int rrr = synced_map_frame(ptr_page_directory , ptr_frame_info , va , PERM_PRESENT | PERM_WRITEABLE);
         //map_frame(ptr_page_directory , ptr_frame_info , va , PERM_WRITEABLE);
 
         if(rrr != 0){
@@ -167,7 +168,7 @@ void* sbrk(int numOfPages)
         if(ret == E_NO_MEM) {
         	return (void *)E_UNSPECIFIED;
         }
-        synced_map_frame(ptr_page_directory , ptr_frame_info , va ,  PERM_WRITEABLE);
+        synced_map_frame(ptr_page_directory , ptr_frame_info , va ,  PERM_PRESENT | PERM_WRITEABLE);
         va += PAGE_SIZE;
 	}
 
@@ -192,29 +193,26 @@ void* sbrk(int numOfPages)
 
 //TODO: [PROJECT'24.MS2 - BONUS#2] [1] KERNEL HEAP - Fast Page Allocator
 
-int32 is_free_page(uint32 page_va) {
+int32 khis_free_page(uint32 page_va) {
 	// page_va is the virtual address within some page , could be with offset doesn't matter.
-
 	uint32 page_num = page_va / PAGE_SIZE;
 	return (allocated_pages_num[page_num] == 0);
 }
 
-uint32 get_pgallocation_address(uint32 size) {
-	uint32 start = hard_limit + PAGE_SIZE;
-	uint32 pages_needed = (size) / PAGE_SIZE;
 
+uint32 get_pgallocation_address(uint32 size, uint32 start, uint32* page_directory, uint32 pg_alloc_last) {
 	//cprintf("%d pages needed\n", pages_needed);
 
 	uint32 it = start;
 	uint32 curSize = 0;
 	uint32 pgalloc_ptr = 0;
 
-	for (; curSize < size && it < pgalloc_last; it += PAGE_SIZE) {
+	for (; curSize < size && it < pg_alloc_last; it += PAGE_SIZE) {
 
 		uint32 *ptr_table = NULL;
-		struct FrameInfo *ptr_frame_info = get_frame_info(ptr_page_directory, it, &ptr_table);
+		struct FrameInfo *ptr_frame_info = get_frame_info(page_directory, it, &ptr_table);
 
-		if (is_free_page(it)) { // if free page
+		if (khis_free_page(it)) { // if free page
 			//cprintf("[-]free_Page\n");
 			if(curSize == 0) {
 				pgalloc_ptr = it;
@@ -237,9 +235,10 @@ uint32 get_pgallocation_address(uint32 size) {
 	}
 
 	//cprintf("[-]returning pgalloc_last\n");
-	return pgalloc_last;
+	return pg_alloc_last;
 
 }
+
 
 void* kmalloc(unsigned int size)
 {
@@ -261,7 +260,7 @@ void* kmalloc(unsigned int size)
 			return ret;
 		}
 
-		if (size > (KERNEL_HEAP_MAX - pgalloc_last)){
+		if (size > (KERNEL_HEAP_MAX - pgalloc_last)) {
 			//cprintf("trying to allocate greater than limit\n");
 			return NULL;
 		}
@@ -276,7 +275,7 @@ void* kmalloc(unsigned int size)
 //		cprintf("kmalloc1\n");
 
 //		ALLOCATE  & MAP
-		uint32 it = get_pgallocation_address((uint32)total_size);
+		uint32 it = get_pgallocation_address((uint32)total_size, hard_limit+PAGE_SIZE, ptr_page_directory, pgalloc_last);
 //		cprintf("kmalloc2\n");
 		if (it == pgalloc_last) {
 			if((pgalloc_last + total_size) > (uint32)KERNEL_HEAP_MAX) {
@@ -289,7 +288,7 @@ void* kmalloc(unsigned int size)
 //		cprintf("kmalloc3\n");
 
 		uint32 result = it;
-		uint32 num_pages = total_size / PAGE_SIZE;
+		uint32 num_pages = (total_size+PAGE_SIZE-1)/PAGE_SIZE;
 		for (int i = 0, cnt = num_pages; i < num_pages; i++, it += PAGE_SIZE, cnt--) {
 
 			struct FrameInfo *newFrame = NULL;
@@ -299,7 +298,7 @@ void* kmalloc(unsigned int size)
 				return NULL;
 			}
 
-			state = synced_map_frame(ptr_page_directory, newFrame, it, PERM_WRITEABLE);
+			state = synced_map_frame(ptr_page_directory, newFrame, it, PERM_PRESENT | PERM_WRITEABLE);
 			if (state == E_NO_MEM) {		// just to make sure.
 				return NULL;
 			}
@@ -367,7 +366,7 @@ void kfree(void* virtual_address)
 
 		// move the  pgalloc_last pointer down if exist some free pages before it.
 		uint32 ptr = pgalloc_last - PAGE_SIZE;
-		while(ptr >= (hard_limit + sizeof(int)) && is_free_page(ptr)) {
+		while(ptr >= (hard_limit + sizeof(int)) && khis_free_page(ptr)) {
 			pgalloc_last -= PAGE_SIZE;
 			ptr -= PAGE_SIZE;
 		}

@@ -862,27 +862,52 @@ uint32 __cur_k_stk = KERNEL_HEAP_START;
 //===========================================================
 // 5) ALLOCATE SPACE FOR USER KERNEL STACK (One Per Process):
 //===========================================================
-void* create_user_kern_stack(uint32* ptr_user_page_directory)
-{
+void* create_user_kern_stack(uint32* ptr_user_page_directory) {
 #if USE_KHEAP
-	//TODO: [PROJECT'24.MS2 - #07] [2] FAULT HANDLER I - create_user_kern_stack
-	// Write your code here, remove the panic and write your code
-	panic("create_user_kern_stack() is not implemented yet...!!");
 
-	//allocate space for the user kernel stack.
-	//remember to leave its bottom page as a GUARD PAGE (i.e. not mapped)
-	//return a pointer to the start of the allocated space (including the GUARD PAGE)
-	//On failure: panic
+    //TODO: [PROJECT'24.MS2 - #07] [2] FAULT HANDLER I - create_user_kern_stack
+    // Write your code here, remove the panic and write your code
+    //panic("create_user_kern_stack() is not implemented yet...!!");
+
+	cprintf("---------------create_user_kern_stack called----------------- \n");
+    void* kernel_stack = kmalloc(KERNEL_STACK_SIZE);//allocate memory in kernel space
+    if(kernel_stack == NULL) {
+        panic("allocation failed for kernel stack\n");
+    }
+
+    cprintf("ksva: %p  |  %d\n", kernel_stack, (uint32)kernel_stack);
+
+    uint32 *page_table = NULL;
+    int status = get_page_table(ptr_user_page_directory, (uint32)kernel_stack, &page_table);
+
+
+    if (status != TABLE_IN_MEMORY) {
+    	page_table = create_page_table(ptr_user_page_directory, (uint32)kernel_stack);
+    	cprintf("error404\n");
+    }
+
+    //page_table[PTX(kernel_stack)] = page_table[PTX(kernel_stack)] & (~PERM_PRESENT);
+	pt_set_page_permissions(ptr_user_page_directory, (uint32)kernel_stack, 0, PERM_PRESENT);
+
+	unmap_frame(ptr_user_page_directory, (uint32)kernel_stack);
+
+    return kernel_stack;
+
+    //allocate space for the user kernel stack.
+    //remember to leave its bottom page as a GUARD PAGE (i.e. not mapped)
+    //return a pointer to the start of the allocated space (including the GUARD PAGE)
+    //On failure: panic
 
 
 #else
-	if (KERNEL_HEAP_MAX - __cur_k_stk < KERNEL_STACK_SIZE)
-		panic("Run out of kernel heap!! Unable to create a kernel stack for the process. Can't create more processes!");
-	void* kstack = (void*) __cur_k_stk;
-	__cur_k_stk += KERNEL_STACK_SIZE;
-	return kstack ;
-//	panic("KERNEL HEAP is OFF! user kernel stack is not supported");
+    if (KERNEL_HEAP_MAX - __cur_k_stk < KERNEL_STACK_SIZE)
+        panic("Run out of kernel heap!! Unable to create a kernel stack for the process. Can't create more processes!");
+    void* kstack = (void*) __cur_k_stk;
+    __cur_k_stk += KERNEL_STACK_SIZE;
+    return kstack ;
+//    panic("KERNEL HEAP is OFF! user kernel stack is not supported");
 #endif
+
 }
 
 /*2024*/
@@ -913,10 +938,15 @@ void initialize_uheap_dynamic_allocator(struct Env* e, uint32 daStart, uint32 da
 	//	2) call the initialize_dynamic_allocator(..) to complete the initialization
 	//panic("initialize_uheap_dynamic_allocator() is not implemented yet...!!");
 
-	//step1 limits of kheap
-	e->start =  daStart;
+	e->start = daStart;
 	e->sbreak = daStart;
 	e->hlimit = daLimit;
+	e->pgalloc_last = daLimit + PAGE_SIZE;
+
+	// initializing the list holding the sizes of allocated pages.
+	//memset(e->is_allocated, 0, sizeof(e->is_allocated));
+	memset(e->is_marked, 0, sizeof(e->is_marked));
+
 	initialize_dynamic_allocator(daStart, 0);
 
 }

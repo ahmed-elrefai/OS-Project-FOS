@@ -13,21 +13,103 @@ void* sbrk(int increment)
 	return (void*) sys_sbrk(increment);
 }
 
+
 //=================================
 // [2] ALLOCATE SPACE IN USER HEAP:
 //=================================
+
+int32 uhis_free_page(uint32 page_va) {
+	// page_va is the virtual address within some page , could be with offset doesn't matter.
+	uint32 page_num = page_va / PAGE_SIZE;
+	return 0;
+	//(myEnv->is_allocated[page_num] == PAGE_FREE);
+}
+
+uint32 uhget_pgallocation_address(uint32 size) {
+	//cprintf("%d pages needed\n", pages_needed);
+
+	uint32 start = myEnv->start;
+	uint32* page_directory = myEnv->env_page_directory;
+	uint32 pg_alloc_last = myEnv->pgalloc_last;
+
+	uint32 it = start;
+	uint32 curSize = 0;
+	uint32 pgalloc_ptr = 0;
+
+	for (; curSize < size && it < pg_alloc_last; it += PAGE_SIZE) {
+
+//		uint32 *ptr_table = NULL;
+//		struct FrameInfo *ptr_frame_info = get_frame_info(page_directory, it, &ptr_table);
+
+		if (uhis_free_page(it)) { // if free page
+			//cprintf("[-]free_Page\n");
+			if(curSize == 0) {
+				pgalloc_ptr = it;
+			}
+			curSize += PAGE_SIZE;
+
+		}else {
+			//cprintf("[-]occupied_Page\n");
+			curSize = 0;
+			pgalloc_ptr = 0;
+		}
+	}
+
+
+
+	// if exist some free pages before pgalloc_last which could be used.
+	if(pgalloc_ptr != 0 && curSize >= size) {
+		//cprintf("[-]returning pgalloc_ptr -> pages found before pgalloc_last\n");
+		return pgalloc_ptr;
+	}
+
+	//cprintf("[-]returning pgalloc_last\n");
+	return pg_alloc_last;
+
+}
+
+
 void* malloc(uint32 size)
 {
+
 	//==============================================================
 	//DON'T CHANGE THIS CODE========================================
 	if (size == 0) return NULL ;
 	//==============================================================
 	//TODO: [PROJECT'24.MS2 - #12] [3] USER HEAP [USER SIDE] - malloc()
 	// Write your code here, remove the panic and write your code
-	panic("malloc() is not implemented yet...!!");
-	return NULL;
+	//panic("malloc() is not implemented yet...!!");
+	//return NULL;
 	//Use sys_isUHeapPlacementStrategyFIRSTFIT() and	sys_isUHeapPlacementStrategyBESTFIT()
 	//to check the current strategy
+
+	uint32 va = myEnv->start;
+	uint32 total_size = ((size+PAGE_SIZE-1)/PAGE_SIZE)*PAGE_SIZE;
+	uint32 size_counter = 0;
+	if (sys_isUHeapPlacementStrategyFIRSTFIT()) {
+		if (size <= DYN_ALLOC_MAX_SIZE) {
+			return alloc_block_FF(size);
+		}else {
+
+			uint32 result = uhget_pgallocation_address(total_size);
+			if (result == myEnv->pgalloc_last) {
+
+			if((myEnv->pgalloc_last + total_size) > (uint32)USER_HEAP_MAX) {
+				return NULL;
+			}
+
+				myEnv->pgalloc_last += total_size;
+			}
+			sys_allocate_user_mem(result, total_size);
+			return (void*)result;
+		}
+	} else if(sys_isUHeapPlacementStrategyBESTFIT()) { // best fit strategy
+
+	}
+
+
+	return NULL;
+
 
 }
 
@@ -55,16 +137,18 @@ void free(void* virtual_address)
 		// unmark pages and free them
 
 		// get the size of the current allocated pages
-		uint32 page_num = (virtual_address - USER_HEAP_START)/PAGE_SIZE;
-		uint32 pages = myEnv->allocated_pages_num[page_num];
+		uint32 page_num = (((uint32)virtual_address) - USER_HEAP_START)/PAGE_SIZE;
+		uint32 pages = 0;
+		// delete the allocated range from the list
+
 
 		// unmark the allocated pages
-		uint32 va = virtual_address;
-		for(uint32 i = 0 ; i < pages ; i++, va += PAGE_SIZE) {
-			unmark_page(va);
-		}
+		uint32 va = (uint32)virtual_address;
+		//		for(uint32 i = 0 ; i < pages ; i++, va += PAGE_SIZE) {
+		//			unmark_page(va);
+		//		}
 
-		sys_free_user_mem((void*)virtual_address, (pages * PAGE_SIZE));
+		sys_free_user_mem((uint32)virtual_address, (pages * PAGE_SIZE));
 	} else {
 		panic("(user free) the provided address is invalid!\n");
 	}
@@ -120,7 +204,6 @@ void sfree(void* virtual_address)
 	panic("sfree() is not implemented yet...!!");
 }
 
-
 //=================================
 // REALLOC USER SPACE:
 //=================================
@@ -136,6 +219,7 @@ void sfree(void* virtual_address)
 //		which switches to the kernel mode, calls move_user_mem(...)
 //		in "kern/mem/chunk_operations.c", then switch back to the user mode here
 //	the move_user_mem() function is empty, make sure to implement it.
+
 void *realloc(void *virtual_address, uint32 new_size)
 {
 	//[PROJECT]

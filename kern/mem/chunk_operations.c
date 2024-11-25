@@ -121,35 +121,40 @@ uint32 calculate_required_frames(uint32* page_directory, uint32 sva, uint32 size
 /* DYNAMIC ALLOCATOR SYSTEM CALLS */
 //=====================================
 
-void mark_page(uint32 va) {
+void mark_page(uint32 va, struct Env* env) {
 	// change bit of index 9 in the address entry to 1
 
-	uint32* ptr_page_table;
-	int status = get_page_table(myEnv->env_page_directory, va, &ptr_page_table);
-	if(status == TABLE_NOT_EXIST) {
-		ptr_page_table = create_page_table(myEnv->env_page_directory, va);
-	}
+	cprintf(">marking page at %p\n", (void*)va);
 
+	uint32 page_num = (va - USER_HEAP_START)/PAGE_SIZE;
+	env->is_marked[page_num] = 1;
 
-	/*
-	 * masking to set the 9th bit to 1
-	 * va   	-> 00000000 00000000 00101100 11011001
-	 * mask 	-> 00000000 00000000 00000010 00000000
-	 * mask&va 	-> 00000000 00000000 00101110 11011001 -> the 9th bit is set to 1
-	 */
-
-	uint32 entry = ptr_page_table[PTX(va)];
-	uint32 mask = (1 << 9);
-	ptr_page_table[PTX(va)] = (entry|mask);
+//	uint32* ptr_page_table;
+//	int status = get_page_table(env->env_page_directory, va, &ptr_page_table);
+//	if(status == TABLE_NOT_EXIST) {
+//		ptr_page_table = create_page_table(env->env_page_directory, va);
+//	}
+//
+//
+//
+//
+//	/*
+//	 * masking to set the 9th bit to 1
+//	 * va   	-> 00000000 00000000 00101100 11011001
+//	 * mask 	-> 00000000 00000000 00000010 00000000
+//	 * mask&va 	-> 00000000 00000000 00101110 11011001 -> the 9th bit is set to 1
+//	 */
+//
+//	ptr_page_table[PTX(va)] |= (1 << 9);
 }
 
-void unmark_page(uint32 va) {
+void unmark_page(uint32 va, struct Env* env) {
 	// change bit of index 9 in the address entry to 0
 
 	uint32* ptr_page_table;
-	int status = get_page_table(myEnv->env_page_directory, va, &ptr_page_table);
+	int status = get_page_table(env->env_page_directory, va, &ptr_page_table);
 	if(status == TABLE_NOT_EXIST) {
-		ptr_page_table = create_page_table(myEnv->env_page_directory, va);
+		ptr_page_table = create_page_table(env->env_page_directory, va);
 	}
 
 
@@ -160,31 +165,10 @@ void unmark_page(uint32 va) {
 	 * mask&va 	-> 00000000 00000000 00101100 11011001 -> the 9th bit is set to 0
 	 */
 
-	uint32 entry = ptr_page_table[PTX(va)];
-	uint32 mask = (~(1 << 9));
-	ptr_page_table[PTX(va)] = (entry&mask);
+	ptr_page_table[PTX(va)] &= (~(1 << 9));
+
 }
 
-uint32 is_marked_page(uint32 va) {
-	// check if the 9th bit is set to 1, if not return 0
-
-	uint32* ptr_page_table;
-	int status = get_page_table(myEnv->env_page_directory, va, &ptr_page_table);
-	if(status == TABLE_NOT_EXIST) {
-		return 0;
-	}
-
-	/*
-	 * masking to get the 9th bit
-	 * va   	-> 00000000 00000000 00101100 11011001
-	 * mask 	-> 00000000 00000000 00000010 00000000
-	 * mask&va 	-> 00000000 00000000 00000000 00000000
-	 */
-
-	uint32 entry = ptr_page_table[PTX(va)];
-	uint32 mask = (1 << 9);
-	return (entry&mask); // if 0 its not marked , if other it is set
-}
 
 void* sys_sbrk(int numOfPages)
 {
@@ -223,27 +207,26 @@ void* sys_sbrk(int numOfPages)
 
 
 	//page address
-	uint32 va = env->sbreak;
+	uint32 it = env->sbreak;
 
-	for(int32 i = 0 ; i < numOfPages ; i++) {
-		mark_page(va + i * PAGE_SIZE);
-		va += PAGE_SIZE;
+	// mark the range
+	for(int32 i = 0 ; i < numOfPages ; i++, it += PAGE_SIZE) {
+		mark_page(it, env);
 	}
 
-	//cprintf("->>>%d,  ->>%d\n", (void*)(va - sizeof(int))-(void*)(segment_break - sizeof(int)), increasing);
+	// update sbreak pointer
+	env->sbreak = last_address;
 
-	struct blockElement * newBlock = (struct blockElement *)(env->sbreak); // assign old brk to a block
-	env->sbreak = va;
-	int32 *end_block = (int32 *)(va - sizeof(int));
-
+	// adjusting end block
+	int32 *end_block = (int32 *)(last_address - sizeof(int));
 	*end_block = 1;
 
-	set_block_data((void*)newBlock , increasing , 0);
+	//set_block_data((void*)newBlock , increasing , 0);
 
-	// you have to set bounds first before calling free as it checks for them
-	env->end_bound = (void*) end_block;
-
+	// updating end block in env
+	env->end_bound = (uint32)end_block;
 	return (void*)old_sbrk;
+
 
 }
 
@@ -260,7 +243,21 @@ void allocate_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 
 	//TODO: [PROJECT'24.MS2 - #13] [3] USER HEAP [KERNEL SIDE] - allocate_user_mem()
 	// Write your code here, remove the panic and write your code
-	panic("allocate_user_mem() is not implemented yet...!!");
+	//panic("allocate_user_mem() is not implemented yet...!!");
+
+	uint32 it = virtual_address;
+	uint32 page_num = (it - USER_HEAP_START)/PAGE_SIZE; // get first page num
+	//e->is_allocated[page_num] = PAGE_ALLOC_START;
+
+	uint32 num_pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
+
+	for (int i = 0; i < num_pages; i++, it += PAGE_SIZE, page_num++) {
+
+		mark_page(it, e);
+		// indicating it is a start of allocated range
+		//if(i > 0) e->is_allocated[page_num] = PAGE_ALLOCATED;
+
+	}
 }
 
 //=====================================
@@ -289,16 +286,15 @@ void free_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 
 	// 1. unmark and free the processes
 	for(int i = 0; i<num_of_pages; i++, va+=PAGE_SIZE) {
-
 		// unmark page and update the size array
-		unmark_page(va);
-		e->allocated_pages_num[(va/PAGE_SIZE)] = 0;
+		unmark_page(va, e);
 
 		// free the page
 		uint32 *page_table_ptr;
 		struct FrameInfo* frame_info_ptr = get_frame_info(e->env_page_directory, va, &page_table_ptr);
-		unmap_frame(e->env_page_directory, va);
-		free_frame(frame_info_ptr);
+		kfree((void*)va);
+//		unmap_frame(e->env_page_directory, va);
+//		free_frame(frame_info_ptr);
 
 		// remove the page from page file
 		pf_remove_env_page(e, va);
@@ -318,7 +314,8 @@ void free_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 		}
 
 		uint32 page_num = ws_element->virtual_address /PAGE_SIZE;
-		if(page_num >= start_page && page_num <= end_page) {
+		if((char*)(ws_element->virtual_address) >= (char*)virtual_address &&
+				(char*)(ws_element->virtual_address) < (char*)(virtual_address + size)) {
 			// if the current working set element within the given range
 			// i will hold it and remove it in the next iteration
 			// can't remove it in the current iteration as it will make the iterator pointer lost

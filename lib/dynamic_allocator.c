@@ -16,8 +16,7 @@
 //=====================================================
 // 1) GET BLOCK SIZE (including size of its meta data):
 //=====================================================
-__inline__ uint32 get_block_size(void* va)
-{
+__inline__ uint32 get_block_size(void* va) {
 	uint32 *curBlkMetaData = ((uint32 *)va - 1) ;
 	return (*curBlkMetaData) & ~(0x1);
 }
