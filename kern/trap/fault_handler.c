@@ -74,37 +74,31 @@ int is_page_read_write(struct Env *faulted_env, uint32 fault_va) {
 }
 
 uint32 is_marked_page(struct Env* faulted_env, uint32 va) {
-    // check if the 9th bit is set to 1, if not return 0
+    // check if the 10th bit is set to 1, if not return 0
 
 	cprintf(">checking validation for page at %p\n", (void*)va);
 	cprintf("->>>address in MB>>> %d mb\n", ((va)>>20));
 
-	uint32 page_num = (va - USER_HEAP_START)/PAGE_SIZE;
-	return faulted_env->is_marked[page_num];
 
 //    uint32* ptr_page_table;
 //    int status = get_page_table(faulted_env->env_page_directory, va, &ptr_page_table);
 //    if(status == TABLE_NOT_EXIST) {
 //    	cprintf("is_marked_page -> table not exixt in memory\n");
 //    	ptr_page_table = create_page_table(faulted_env->env_page_directory, va);
+//    	return 0;
 //    }
 //
 //    /*
-//
 //	masking to get the 9th bit
 //	va       -> 00000000 00000000 00101100 11011001
 //	mask     -> 00000000 00000000 00000010 00000000
 //	mask&va  -> 00000000 00000000 00000000 00000000*/
 //
-////    uint32 mask = ((uint32)1 << (uint32)8);
-////	cprintf("mask: %d", mask);
-////	return ((va&mask) >> 8); // if 0 its not marked , if other it is set
-////
-//
-//    uint32 entry = ptr_page_table[PTX(va)];
-//    cprintf("the entry is %d\n", entry);
-//    uint32 mask = (1 << 9);
-//    return ((entry&mask)); // if 0 its not marked , if other it is set
+//    uint32 mask = (1 << 10);
+//    return ((ptr_page_table[PTX(va)]&mask)); // if 0 its not marked , if other it is set
+
+		uint32 page_num = (va - USER_HEAP_START)/PAGE_SIZE;
+		return (mark_status[page_num] != PAGE_FREE);
 }
 
 struct Env* last_faulted_env = NULL;
@@ -193,37 +187,21 @@ void fault_handler(struct Trapframe *tf)
 			//TODO: [PROJECT'24.MS2 - #08] [2] FAULT HANDLER I - Check for invalid pointers
 			//(e.g. pointing to unmarked user heap page, kernel or wrong access rights),
 			//your code is here
-			cprintf("FAULT HANDLER I - Check for invalid pointers called \n");
-			cprintf("if 1 \n");
-
-//			if(fault_va < USTACKTOP && fault_va >= USTACKBOTTOM) {
-//				cprintf("inside the ustack\n");
-//			} else if(fault_va >= USER_LIMIT && fault_va <= KERNEL_HEAP_MAX) {
-//				cprintf("inside the kernel\n");
-//			} else if(fault_va < USER_HEAP_MAX && fault_va >= USER_HEAP_START) {
-//				cprintf("inside the uheap\n");
-//			} else {
-//				cprintf("inside nothing\n");
-//			}
-
-			//cprintf("if 2 \n");
+			//cprintf("FAULT HANDLER I - Check for invalid pointers called \n");
 			if(fault_va >= KERNEL_BASE && fault_va <= KERNEL_HEAP_MAX) {
-				cprintf("pointing \n");
+				cprintf("[FAULT HANDLER I - Check for invalid pointers]pointing to kernel address address\n");
 				env_exit();
 
 			}
 			else if((is_page_read_write(faulted_env, fault_va))) {
-				cprintf("it must be read only. \n");
+				cprintf("[FAULT HANDLER I - Check for invalid pointers]it must be read only. \n");
 				env_exit();
 				//return;
 			}else if(fault_va < USER_HEAP_MAX && fault_va >= USER_HEAP_START && !is_marked_page(faulted_env, fault_va)) {
-				cprintf("unmarked page\n");
+				cprintf("[FAULT HANDLER I - Check for invalid pointers]unmarked page\n");
 				env_exit();
 			}
-			cprintf("pass\n");
-			//cprintf("if 3 \n");
 
-			cprintf("endd \n");
 
 		/*============================================================================================*/
 		}
@@ -292,12 +270,12 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 			int iWS =faulted_env->page_last_WS_index;
 			uint32 wsSize = env_page_ws_get_size(faulted_env);
 	#endif
-		cprintf("PLACEMENT=========================WS Size = %d\n", wsSize );
+		cprintf("PLACEMENT=========== fault_va: %p ==============WS Size = %d\n", fault_va, wsSize );
 		cprintf("PLACEMENT=========================WS MX Size = %d\n", faulted_env->page_WS_max_size);
 		if(wsSize < (faulted_env->page_WS_max_size)) {
 
-			cprintf("working set before PLACEMENT:\n");
-			env_page_ws_print(faulted_env);
+			//cprintf("working set before PLACEMENT:\n");
+			//env_page_ws_print(faulted_env);
 			//TODO: [PROJECT'24.MS2 - #09] [2] FAULT HANDLER I - Placement
 			// Write your code here, remove the panic and write your code
 			//panic("page_fault_handler().PLACEMENT is not implemented yet...!!");
@@ -315,7 +293,8 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 
 			int ss = allocate_frame(&framee);
 			ss = map_frame(faulted_env->env_page_directory, framee, fault_va, perms);
-			faulted_env->is_marked[(fault_va - USER_HEAP_START)/PAGE_SIZE] = 1;
+			//faulted_env->is_marked[(fault_va - USER_HEAP_START)/PAGE_SIZE] = 1;
+
 
 
 			// read the page from disk
@@ -359,8 +338,8 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 
 
 
-			cprintf("working set after PLACEMENT:\n");
-			env_page_ws_print(faulted_env);
+//			cprintf("working set after PLACEMENT:\n");
+//			env_page_ws_print(faulted_env);
 
 	} else {
 		//cprintf("REPLACEMENT=========================WS Size = %d\n", wsSize );

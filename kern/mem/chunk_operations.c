@@ -121,22 +121,16 @@ uint32 calculate_required_frames(uint32* page_directory, uint32 sva, uint32 size
 /* DYNAMIC ALLOCATOR SYSTEM CALLS */
 //=====================================
 
-void mark_page(uint32 va, struct Env* env) {
-	// change bit of index 9 in the address entry to 1
 
-	cprintf(">marking page at %p\n", (void*)va);
-
-	uint32 page_num = (va - USER_HEAP_START)/PAGE_SIZE;
-	env->is_marked[page_num] = 1;
-
-//	uint32* ptr_page_table;
-//	int status = get_page_table(env->env_page_directory, va, &ptr_page_table);
-//	if(status == TABLE_NOT_EXIST) {
-//		ptr_page_table = create_page_table(env->env_page_directory, va);
-//	}
+void mark_page(uint32 va, struct Env* env, uint32 state) {
+//	//change bit of index 10 in the address entry to 1
 //
+//	// the easy way with array....
+//	//cprintf(">marking page at %p\n", (void*)va);
 //
-//
+//	// the page table guaranteed to be created
+//	uint32* ptr_page_table = NULL;
+//	int page_status = get_page_table(env->env_page_directory, va, &ptr_page_table);
 //
 //	/*
 //	 * masking to set the 9th bit to 1
@@ -145,7 +139,13 @@ void mark_page(uint32 va, struct Env* env) {
 //	 * mask&va 	-> 00000000 00000000 00101110 11011001 -> the 9th bit is set to 1
 //	 */
 //
-//	ptr_page_table[PTX(va)] |= (1 << 9);
+//	ptr_page_table[PTX(va)] |= (1<<10);
+//	// state could be mark state or unmark state
+
+	//----------------------------------------------------------------------------------
+	// marking the page in the given environment
+	uint32 page_num = (va - USER_HEAP_START)/PAGE_SIZE;
+	mark_status[page_num] = state;
 }
 
 void unmark_page(uint32 va, struct Env* env) {
@@ -153,10 +153,6 @@ void unmark_page(uint32 va, struct Env* env) {
 
 	uint32* ptr_page_table;
 	int status = get_page_table(env->env_page_directory, va, &ptr_page_table);
-	if(status == TABLE_NOT_EXIST) {
-		ptr_page_table = create_page_table(env->env_page_directory, va);
-	}
-
 
 	/*
 	 * masking to set the 9th bit to 0
@@ -164,8 +160,7 @@ void unmark_page(uint32 va, struct Env* env) {
 	 * mask 	-> 11111111 11111111 11111101 11111111
 	 * mask&va 	-> 00000000 00000000 00101100 11011001 -> the 9th bit is set to 0
 	 */
-
-	ptr_page_table[PTX(va)] &= (~(1 << 9));
+	ptr_page_table[PTX(va)] &= (~(1 << 10));
 
 }
 
@@ -211,20 +206,18 @@ void* sys_sbrk(int numOfPages)
 
 	// mark the range
 	for(int32 i = 0 ; i < numOfPages ; i++, it += PAGE_SIZE) {
-		mark_page(it, env);
+		mark_page(it, env, PAGE_MARKED);
 	}
 
 	// update sbreak pointer
 	env->sbreak = last_address;
 
 	// adjusting end block
-	int32 *end_block = (int32 *)(last_address - sizeof(int));
-	*end_block = 1;
-
-	//set_block_data((void*)newBlock , increasing , 0);
+	int32 *new_end_block = (int32 *)(last_address - sizeof(int));
+	*new_end_block = 1;
 
 	// updating end block in env
-	env->end_bound = (uint32)end_block;
+	env->end_bound = (uint32)new_end_block;
 	return (void*)old_sbrk;
 
 
@@ -237,25 +230,26 @@ void allocate_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 {
 	/*====================================*/
 	/*Remove this line before start coding*/
-//	inctst();
-//	return;
+	//	inctst();
+	//	return;
 	/*====================================*/
 
 	//TODO: [PROJECT'24.MS2 - #13] [3] USER HEAP [KERNEL SIDE] - allocate_user_mem()
 	// Write your code here, remove the panic and write your code
 	//panic("allocate_user_mem() is not implemented yet...!!");
 
+
 	uint32 it = virtual_address;
-	uint32 page_num = (it - USER_HEAP_START)/PAGE_SIZE; // get first page num
-	//e->is_allocated[page_num] = PAGE_ALLOC_START;
+	uint32 num_of_pages = (size + PAGE_SIZE - 1) / PAGE_SIZE; // rounding up the pages
 
-	uint32 num_pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
-
-	for (int i = 0; i < num_pages; i++, it += PAGE_SIZE, page_num++) {
-
-		mark_page(it, e);
-		// indicating it is a start of allocated range
-		//if(i > 0) e->is_allocated[page_num] = PAGE_ALLOCATED;
+	for (int i = 0; i < num_of_pages; i++, it += PAGE_SIZE) {
+		uint32* ptr_page_table = NULL;
+		int page_status = get_page_table(e->env_page_directory, it, &ptr_page_table);
+		if(page_status == TABLE_NOT_EXIST) {
+			create_page_table(e->env_page_directory, it);
+		}
+		//mark the range
+		mark_page(it, e, PAGE_MARKED);
 
 	}
 }
