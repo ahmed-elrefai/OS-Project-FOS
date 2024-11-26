@@ -74,36 +74,31 @@ int is_page_read_write(struct Env *faulted_env, uint32 fault_va) {
 }
 
 uint32 is_marked_page(struct Env* faulted_env, uint32 va) {
-    // check if the 9th bit is set to 1, if not return 0
+    // check if the 10th bit is set to 1, if not return 0
 
 	cprintf(">checking validation for page at %p\n", (void*)va);
 	cprintf("->>>address in MB>>> %d mb\n", ((va)>>20));
 
-	uint32 page_num = (va - USER_HEAP_START)/PAGE_SIZE;
-	return (faulted_env->mark_status[page_num] != PAGE_FREE);
 
 //    uint32* ptr_page_table;
 //    int status = get_page_table(faulted_env->env_page_directory, va, &ptr_page_table);
 //    if(status == TABLE_NOT_EXIST) {
 //    	cprintf("is_marked_page -> table not exixt in memory\n");
 //    	ptr_page_table = create_page_table(faulted_env->env_page_directory, va);
+//    	return 0;
 //    }
 //
 //    /*
-//
 //	masking to get the 9th bit
 //	va       -> 00000000 00000000 00101100 11011001
 //	mask     -> 00000000 00000000 00000010 00000000
 //	mask&va  -> 00000000 00000000 00000000 00000000*/
 //
-////    uint32 mask = ((uint32)1 << (uint32)8);
-////	cprintf("mask: %d", mask);
-////	return ((va&mask) >> 8); // if 0 its not marked , if other it is set
-////
-//
-//    uint32 entry = ptr_page_table[PTX(va)];
 //    uint32 mask = (1 << 10);
-//    return ((entry&mask)); // if 0 its not marked , if other it is set
+//    return ((ptr_page_table[PTX(va)]&mask)); // if 0 its not marked , if other it is set
+
+		uint32 page_num = (va - USER_HEAP_START)/PAGE_SIZE;
+		return (mark_status[page_num] != PAGE_FREE);
 }
 
 struct Env* last_faulted_env = NULL;

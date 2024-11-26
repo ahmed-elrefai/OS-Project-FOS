@@ -104,8 +104,7 @@ struct Context {
 
 
 
-//#define MESSAGE_DEBUG 1
-
+uint8 mark_status[(1<<18)];
 
 struct Env {
 	//================
@@ -133,17 +132,13 @@ struct Env {
 
 	//=======================================================================
 	//TODO: [PROJECT'24.MS2 - #10] [3] USER HEAP - add suitable code here
-
 	//=======================================================================
 	uint32 start;
 	uint32 sbreak;
 	uint32 hlimit;
 	uint32 end_bound;
-	//FrameInfo
-	//uint8 is_allocated[(2<<18)];
-	uint8 mark_status[(1<<18)];
-	///453376//
 	uint32 pgalloc_last;
+	///453376//
 	// 524290
 	// 453,376
 

@@ -21,7 +21,7 @@
 #include "../mem/memory_manager.h"
 #include "../mem/shared_memory_manager.h"
 
-
+#define cprintf //
 /******************************/
 /* DATA & DECLARATIONS */
 /******************************/
@@ -947,7 +947,7 @@ void initialize_uheap_dynamic_allocator(struct Env* e, uint32 daStart, uint32 da
 	//page alloc
 	e->pgalloc_last = daLimit + PAGE_SIZE;
 
-	memset(e->mark_status, 0, sizeof(e->mark_status));
+	memset(mark_status, PAGE_FREE, sizeof(mark_status));
 	initialize_dynamic_allocator(daStart, 0);
 
 }
