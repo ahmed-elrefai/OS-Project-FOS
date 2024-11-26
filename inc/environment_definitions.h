@@ -52,11 +52,9 @@ unsigned int _ModifiedBufferLength;
 #define ENV_EXIT		5
 #define ENV_UNKNOWN		6
 
-//makaty
-#define PAGE_FREE 			0
+#define FREE_PAGE			0
 #define PAGE_MARKED 		1
 #define PAGE_MARK_START 	2
-//makaty
 
 LIST_HEAD(Env_Queue, Env);		// Declares 'struct Env_Queue'
 LIST_HEAD(Env_list, Env);		// Declares 'struct Env_list'
@@ -104,7 +102,6 @@ struct Context {
 
 
 
-uint8 mark_status[(1<<18)];
 
 struct Env {
 	//================
@@ -147,6 +144,7 @@ struct Env {
 	// delta = 731mb
 	// 796917760
 
+	void* returned_address;
 
 	//for page file management
 	uint32* disk_env_pgdir;

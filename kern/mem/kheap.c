@@ -216,9 +216,6 @@ uint32 get_pgallocation_address(uint32 size, uint32 start, uint32* page_director
 
 	for (; curSize < size && it < pg_alloc_last; it += PAGE_SIZE) {
 
-//		uint32 *ptr_table = NULL;
-//		struct FrameInfo *ptr_frame_info = get_frame_info(page_directory, it, &ptr_table);
-
 		if (khis_free_page(it)) { // if free page
 			//cprintf("[-]free_Page\n");
 			if(curSize == 0) {
