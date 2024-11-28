@@ -122,46 +122,15 @@ uint32 calculate_required_frames(uint32* page_directory, uint32 sva, uint32 size
 //=====================================
 
 
-void mark_page(uint32 va, struct Env* env, uint32 state) {
-//	//change bit of index 10 in the address entry to 1
-//
-//	// the easy way with array....
-//	//cprintf(">marking page at %p\n", (void*)va);
-//
-//	// the page table guaranteed to be created
-//	uint32* ptr_page_table = NULL;
-//	int page_status = get_page_table(env->env_page_directory, va, &ptr_page_table);
-//
-//	/*
-//	 * masking to set the 9th bit to 1
-//	 * va   	-> 00000000 00000000 00101100 11011001
-//	 * mask 	-> 00000000 00000000 00000010 00000000
-//	 * mask&va 	-> 00000000 00000000 00101110 11011001 -> the 9th bit is set to 1
-//	 */
-//
-//	ptr_page_table[PTX(va)] |= (1<<10);
-//	// state could be mark state or unmark state
-
-	//----------------------------------------------------------------------------------
-	// marking the page in the given environment
-	uint32 page_num = (va - USER_HEAP_START)/PAGE_SIZE;
-	mark_status[page_num] = state;
-}
-
-void unmark_page(uint32 va, struct Env* env) {
-	// change bit of index 9 in the address entry to 0
+void mark_page(uint32 page_va, struct Env* env) {
+	// page_va is the virtual address within some page , could be with offset doesn't matter.
 
 	uint32* ptr_page_table;
-	int status = get_page_table(env->env_page_directory, va, &ptr_page_table);
+	int status = get_page_table(env->env_page_directory, page_va, &ptr_page_table);
 
-	/*
-	 * masking to set the 9th bit to 0
-	 * va   	-> 00000000 00000000 00101110 11011001
-	 * mask 	-> 11111111 11111111 11111101 11111111
-	 * mask&va 	-> 00000000 00000000 00101100 11011001 -> the 9th bit is set to 0
-	 */
-	ptr_page_table[PTX(va)] &= (~(1 << 10));
 
+	uint32 mask = (1 << 10);
+	ptr_page_table[PTX(page_va)] |= mask;
 }
 
 
@@ -206,7 +175,8 @@ void* sys_sbrk(int numOfPages)
 
 	// mark the range
 	for(int32 i = 0 ; i < numOfPages ; i++, it += PAGE_SIZE) {
-		mark_page(it, env, PAGE_MARKED);
+		//MARK
+		mark_page(it, env);
 	}
 
 	// update sbreak pointer
@@ -226,6 +196,58 @@ void* sys_sbrk(int numOfPages)
 //=====================================
 // 1) ALLOCATE USER MEMORY:
 //=====================================
+
+int32 uhis_free_page(uint32 page_va, struct Env* e) {
+	// page_va is the virtual address within some page , could be with offset doesn't matter.
+
+	uint32* ptr_page_table;
+	int status = get_page_table(e->env_page_directory, page_va, &ptr_page_table);
+	/*
+	masking to get the 9th bit
+	va       -> 00000000 00000000 00101100 11011001
+	mask     -> 00000000 00000000 00000010 00000000
+	mask&va  -> 00000000 00000000 00000000 00000000
+	*/
+
+	uint32 mask = (1 << 10);
+	return !((ptr_page_table[PTX(page_va)]&mask)); // if 0 its not marked , if other it is set
+}
+
+uint32 uhget_pgallocation_address(uint32 size, struct Env* e) {
+
+
+	uint32 start = e->hlimit+PAGE_SIZE;
+	uint32* page_directory = e->env_page_directory;
+	uint32 pg_alloc_last = e->pgalloc_last;
+
+	uint32 it = start;
+	uint32 curSize = 0;
+	uint32 pgalloc_ptr = 0;
+
+	cprintf("serchig for space = %umb, sratring from %p to %p\n",(size/(1<<20)), (void*)start, (void*)pg_alloc_last);
+	for (; curSize < size && it < pg_alloc_last; it += PAGE_SIZE) {
+
+		if (uhis_free_page(it, e)) { // if free page
+			if(curSize == 0) {
+				pgalloc_ptr = it;
+			}
+			curSize += PAGE_SIZE;
+
+		}else {	// if marked for another space
+			curSize = 0;
+			pgalloc_ptr = 0;
+		}
+	}
+
+	// if exist some free pages before pgalloc_last which could be used.
+	if(pgalloc_ptr != 0 && curSize >= size) {
+		return pgalloc_ptr;
+	}
+
+	return pg_alloc_last;
+
+}
+
 void allocate_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 {
 	/*====================================*/
@@ -238,7 +260,21 @@ void allocate_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 	// Write your code here, remove the panic and write your code
 	//panic("allocate_user_mem() is not implemented yet...!!");
 
+	// getting the start address of the allocation
+	uint32 total_size = ((size+PAGE_SIZE-1)/PAGE_SIZE)*PAGE_SIZE;
+	virtual_address = uhget_pgallocation_address(total_size, e);
 
+	if (virtual_address == e->pgalloc_last) {
+		if((e->pgalloc_last + total_size) > (uint32)USER_HEAP_MAX) {
+			e->returned_address = NULL;
+			return;
+		}
+		e->pgalloc_last += total_size;
+	}
+
+	e->returned_address = (void*)virtual_address;
+
+	// marking the range
 	uint32 it = virtual_address;
 	uint32 num_of_pages = (size + PAGE_SIZE - 1) / PAGE_SIZE; // rounding up the pages
 
@@ -248,8 +284,9 @@ void allocate_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 		if(page_status == TABLE_NOT_EXIST) {
 			create_page_table(e->env_page_directory, it);
 		}
-		//mark the range
-		mark_page(it, e, PAGE_MARKED);
+		pt_set_page_permissions(e->env_page_directory, it, 0, PERM_PRESENT);
+
+		mark_page(it, e);
 
 	}
 }
@@ -257,6 +294,8 @@ void allocate_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 //=====================================
 // 2) FREE USER MEMORY:
 //=====================================
+
+
 void free_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 {
 	/*====================================*/
@@ -281,7 +320,8 @@ void free_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 	// 1. unmark and free the processes
 	for(int i = 0; i<num_of_pages; i++, va+=PAGE_SIZE) {
 		// unmark page and update the size array
-		unmark_page(va, e);
+		//UNMARK
+		//
 
 		// free the page
 		uint32 *page_table_ptr;

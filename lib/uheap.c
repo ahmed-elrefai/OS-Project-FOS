@@ -1,6 +1,7 @@
 #include <inc/lib.h>
 
 
+
 //==================================================================================//
 //============================ REQUIRED FUNCTIONS ==================================//
 //==================================================================================//
@@ -18,51 +19,7 @@ void* sbrk(int increment) {
 // [2] ALLOCATE SPACE IN USER HEAP:
 //=================================
 
-int32 uhis_free_page(uint32 page_va) {
 
-
-	// page_va is the virtual address within some page , could be with offset doesn't matter.
-	uint32 page_num = page_va / PAGE_SIZE;
-	return (mark_status[page_num] == PAGE_FREE);
-}
-
-uint32 uhget_pgallocation_address(uint32 size) {
-	//cprintf("%d pages needed\n", pages_needed);
-
-
-	uint32 start = myEnv->hlimit+PAGE_SIZE;
-	uint32* page_directory = myEnv->env_page_directory;
-	uint32 pg_alloc_last = myEnv->pgalloc_last;
-
-	uint32 it = start;
-	uint32 curSize = 0;
-	uint32 pgalloc_ptr = 0;
-
-	cprintf("serchig for space = %umb, sratring from %p to %p\n",(size/(1<<20)), (void*)start, (void*)pg_alloc_last);
-	for (; curSize < size && it < pg_alloc_last; it += PAGE_SIZE) {
-
-		if (uhis_free_page(it)) { // if free page
-			if(curSize == 0) {
-				pgalloc_ptr = it;
-			}
-			curSize += PAGE_SIZE;
-
-		}else {	// if marked for another space
-			curSize = 0;
-			pgalloc_ptr = 0;
-		}
-	}
-
-
-
-	// if exist some free pages before pgalloc_last which could be used.
-	if(pgalloc_ptr != 0 && curSize >= size) {
-		return pgalloc_ptr;
-	}
-
-	return pg_alloc_last;
-
-}
 
 
 void* malloc(uint32 size)
@@ -82,24 +39,16 @@ void* malloc(uint32 size)
 	//uint32 va = myEnv->start;
 	uint32 total_size = ((size+PAGE_SIZE-1)/PAGE_SIZE)*PAGE_SIZE;
 	if (sys_isUHeapPlacementStrategyFIRSTFIT()) {
-		if (size <= DYN_ALLOC_MAX_SIZE) {
-			cprintf("[uheap page alloc]\n");
+		if (size <= (uint32)DYN_ALLOC_MAX_BLOCK_SIZE) {
+			cprintf("[uheap block alloc]\n");
 			return alloc_block_FF(size);
 		}else {
 			cprintf("[uheap page alloc]\n");
 
-			uint32 result = uhget_pgallocation_address(total_size);
-			cprintf("result = %p\n", (void*)result);
-			if (result == myEnv->pgalloc_last) {
+			//cprintf("result = %x\n", result);
 
-				if((myEnv->pgalloc_last + total_size) > (uint32)USER_HEAP_MAX) {
-					return NULL;
-				}
-
-				myEnv->pgalloc_last += total_size;
-			}
-			sys_allocate_user_mem(result, total_size);
-			return (void*)result;
+			sys_allocate_user_mem(USER_HEAP_START+(5*PAGE_SIZE), total_size);
+			return myEnv->returned_address;
 		}
 	} else if(sys_isUHeapPlacementStrategyBESTFIT()) { // best fit strategy
 
@@ -114,16 +63,18 @@ void* malloc(uint32 size)
 //=================================
 // [3] FREE SPACE FROM USER HEAP:
 //=================================
-void free(void* virtual_address)
-{
+
+void free(void* virtual_address) {
 	//TODO: [PROJECT'24.MS2 - #14] [3] USER HEAP [USER SIDE] - free()
 	// Write your code here, remove the panic and write your code
-	panic("free() is not implemented yet...!!");
+	//panic("free() is not implemented yet...!!");
 
 	if (virtual_address == NULL) {
 			panic("ufree() : the provided address is NULL..!!");
 			return;
 	}
+
+
 
 	//	free: whether Blk or Pg allocator
 	if ((char*)virtual_address < (char*)(myEnv->sbreak - sizeof(int)) && (char*)virtual_address >= (char*)(myEnv->start + sizeof(int))) {
@@ -135,18 +86,18 @@ void free(void* virtual_address)
 		// unmark pages and free them
 
 		// get the size of the current allocated pages
-		uint32 page_num = (((uint32)virtual_address) - USER_HEAP_START)/PAGE_SIZE;
-		uint32 pages = 0;
+		// uint32 page_num = (((uint32)virtual_address) - USER_HEAP_START)/PAGE_SIZE;
+		// uint32 pages = 0;
+
 		// delete the allocated range from the list
 
-
 		// unmark the allocated pages
-		uint32 va = (uint32)virtual_address;
+		// uint32 va = (uint32)virtual_address;
 		//		for(uint32 i = 0 ; i < pages ; i++, va += PAGE_SIZE) {
 		//			unmark_page(va);
 		//		}
 
-		sys_free_user_mem((uint32)virtual_address, (pages * PAGE_SIZE));
+		sys_free_user_mem((uint32)virtual_address, (PAGE_SIZE));
 	} else {
 		panic("(user free) the provided address is invalid!\n");
 	}

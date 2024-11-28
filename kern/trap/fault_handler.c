@@ -79,26 +79,18 @@ uint32 is_marked_page(struct Env* faulted_env, uint32 va) {
 	cprintf(">checking validation for page at %p\n", (void*)va);
 	cprintf("->>>address in MB>>> %d mb\n", ((va)>>20));
 
+    uint32* ptr_page_table;
+    int status = get_page_table(faulted_env->env_page_directory, va, &ptr_page_table);
+    /*
+	masking to get the 9th bit
+	va       -> 00000000 00000000 00101100 11011001
+	mask     -> 00000000 00000000 00000010 00000000
+	mask&va  -> 00000000 00000000 00000000 00000000
+	*/
 
-//    uint32* ptr_page_table;
-//    int status = get_page_table(faulted_env->env_page_directory, va, &ptr_page_table);
-//    if(status == TABLE_NOT_EXIST) {
-//    	cprintf("is_marked_page -> table not exixt in memory\n");
-//    	ptr_page_table = create_page_table(faulted_env->env_page_directory, va);
-//    	return 0;
-//    }
-//
-//    /*
-//	masking to get the 9th bit
-//	va       -> 00000000 00000000 00101100 11011001
-//	mask     -> 00000000 00000000 00000010 00000000
-//	mask&va  -> 00000000 00000000 00000000 00000000*/
-//
-//    uint32 mask = (1 << 10);
-//    return ((ptr_page_table[PTX(va)]&mask)); // if 0 its not marked , if other it is set
+    uint32 mask = (1 << 10);
+    return ((ptr_page_table[PTX(va)]&mask)); // if 0 its not marked , if other it is set
 
-		uint32 page_num = (va - USER_HEAP_START)/PAGE_SIZE;
-		return (mark_status[page_num] != PAGE_FREE);
 }
 
 struct Env* last_faulted_env = NULL;
@@ -297,21 +289,26 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 
 
 
-			// read the page from disk
 			int ret = pf_read_env_page(faulted_env, (void *)fault_va);
 			if (ret == E_PAGE_NOT_EXIST_IN_PF) {
 				cprintf("Placement> the page not found on disk! :(\n");
 				// Check if the faulted address is in the valid stack or heap range
-				if (!(
-						(fault_va >= faulted_env->start && fault_va < faulted_env->sbreak) ||
-						(fault_va >= (faulted_env->hlimit+PAGE_SIZE) && fault_va < USER_HEAP_MAX) ||
-						(fault_va > (USTACKBOTTOM) && fault_va < USTACKTOP))
-					) {
-
-					env_exit();
+				if (fault_va >= KERNEL_HEAP_START && fault_va < KERNEL_HEAP_MAX){
+					cprintf("(in kernel heap): faulted va: %x\n", (void*)faulted_env);
+				}else if(fault_va >= USER_HEAP_START && fault_va < USER_HEAP_MAX)
+				{
+					cprintf("(in user heap): faulted va: %x\n", (void*)faulted_env);
+				}
+				else if (fault_va >= (USTACKBOTTOM+PAGE_SIZE) && fault_va < USTACKTOP){
+					cprintf("(in stack): faulted va: %x\n", (void*)faulted_env);
 				}
 
-
+				if (!(fault_va >= (USTACKBOTTOM+PAGE_SIZE) && fault_va < USTACKTOP)) {
+					if (!(fault_va >= (USER_HEAP_START) && fault_va < USER_HEAP_MAX)){
+						env_exit();
+					}
+//					env_exit();
+				}
 			} else {
 				cprintf("Placement> the page found on disk successcully! :)\n");
 			}
@@ -351,8 +348,7 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 
 }
 
-void __page_fault_handler_with_buffering(struct Env * curenv, uint32 fault_va)
-{
+void __page_fault_handler_with_buffering(struct Env * curenv, uint32 fault_va) {
 	//[PROJECT] PAGE FAULT HANDLER WITH BUFFERING
 	// your code is here, remove the panic and write your code
 	panic("__page_fault_handler_with_buffering() is not implemented yet...!!");
