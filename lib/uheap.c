@@ -37,17 +37,18 @@ void* malloc(uint32 size)
 	//to check the current strategy
 
 	//uint32 va = myEnv->start;
-	uint32 total_size = ((size+PAGE_SIZE-1)/PAGE_SIZE)*PAGE_SIZE;
+
 	if (sys_isUHeapPlacementStrategyFIRSTFIT()) {
-		if (size <= (uint32)DYN_ALLOC_MAX_BLOCK_SIZE) {
-			cprintf("[uheap block alloc]\n");
+		if (size <= DYN_ALLOC_MAX_BLOCK_SIZE) {
+			//cprintf("[uheap block alloc]\n");
 			return alloc_block_FF(size);
 		}else {
-			cprintf("[uheap page alloc]\n");
+//			cprintf("[uheap page alloc]\n");
 
 			//cprintf("result = %x\n", result);
-
+			uint32 total_size = ((size+PAGE_SIZE-1)/PAGE_SIZE)*PAGE_SIZE;
 			sys_allocate_user_mem(USER_HEAP_START+(5*PAGE_SIZE), total_size);
+			//cprintf("page alloc return address: %p\n", myEnv->returned_address);
 			return myEnv->returned_address;
 		}
 	} else if(sys_isUHeapPlacementStrategyBESTFIT()) { // best fit strategy
@@ -79,12 +80,12 @@ void free(void* virtual_address) {
 	//	free: whether Blk or Pg allocator
 	if ((char*)virtual_address < (char*)(myEnv->sbreak - sizeof(int)) && (char*)virtual_address >= (char*)(myEnv->start + sizeof(int))) {
 		// block allocator: call free;
-		cprintf("(user free)free using the dynalloc.\n");
+//		cprintf("(user free)free using the dynalloc.\n");
 		free_block(virtual_address);
 		return;
-	} else if((char*)virtual_address >= (char*)(myEnv->hlimit + sizeof(int)) && (char*)virtual_address < (char*)KERNEL_HEAP_MAX) {
+	} else if((char*)virtual_address >= (char*)(myEnv->hlimit + PAGE_SIZE) && (char*)virtual_address < (char*)USER_HEAP_MAX) {
 		// unmark pages and free them
-
+		//cprintf("(uheap free, va = %p)free using the page allocator.\n", virtual_address);
 		// get the size of the current allocated pages
 		// uint32 page_num = (((uint32)virtual_address) - USER_HEAP_START)/PAGE_SIZE;
 		// uint32 pages = 0;
@@ -97,7 +98,7 @@ void free(void* virtual_address) {
 		//			unmark_page(va);
 		//		}
 
-		sys_free_user_mem((uint32)virtual_address, (PAGE_SIZE));
+		sys_free_user_mem((uint32)virtual_address, (2*PAGE_SIZE));
 	} else {
 		panic("(user free) the provided address is invalid!\n");
 	}

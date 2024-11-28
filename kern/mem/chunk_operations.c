@@ -122,15 +122,67 @@ uint32 calculate_required_frames(uint32* page_directory, uint32 sva, uint32 size
 //=====================================
 
 
-void mark_page(uint32 page_va, struct Env* env) {
+void mark_page(uint32 page_va, struct Env* env, uint32 state) {
 	// page_va is the virtual address within some page , could be with offset doesn't matter.
 
 	uint32* ptr_page_table;
 	int status = get_page_table(env->env_page_directory, page_va, &ptr_page_table);
+	if(status == TABLE_NOT_EXIST) {
+		cprintf("creating page table\n");
+		ptr_page_table = (uint32*)create_page_table(env->env_page_directory, page_va);
+	}
 
+
+	if(state == FREE_PAGE) {
+		ptr_page_table[PTX(page_va)] &= (~(1<<10));
+		ptr_page_table[PTX(page_va)] &= (~(1<<11));
+		return;
+	}
+
+	ptr_page_table[PTX(page_va)] |= (1 << 10);
+	if(state == PAGE_MARK_START) {
+		ptr_page_table[PTX(page_va)] |= (1<<11);
+		cprintf("address %x marked start\n", page_va);
+	}
+
+	//cprintf("page at address %x marked\n", page_va);
+}
+
+int32 uhis_free_page(uint32 page_va, struct Env* env) {
+	// page_va is the virtual address within some page , could be with offset doesn't matter.
+
+	uint32* ptr_page_table;
+	int status = get_page_table(env->env_page_directory, page_va, &ptr_page_table);
+	if(status == TABLE_NOT_EXIST) {
+		ptr_page_table = (uint32*)create_page_table(env->env_page_directory, page_va);
+	}
+	/*
+	masking to get the 9th bit
+	va       -> 00000000 00000000 00101100 11011001
+	mask     -> 00000000 00000000 00000010 00000000
+	mask&va  -> 00000000 00000000 00000000 00000000
+	*/
 
 	uint32 mask = (1 << 10);
-	ptr_page_table[PTX(page_va)] |= mask;
+	return !((ptr_page_table[PTX(page_va)]&mask)); // if 0 its not marked , if other it is set
+}
+
+uint32 is_start_of_range(uint32 page_va, struct Env* env) {
+
+
+	uint32* ptr_page_table;
+	int status = get_page_table(env->env_page_directory, page_va, &ptr_page_table);
+	if(status == TABLE_NOT_EXIST) {
+		ptr_page_table = (uint32*)create_page_table(env->env_page_directory, page_va);
+	}
+
+	uint32 mask = (1 << 11);
+	if((ptr_page_table[PTX(page_va)]&mask)) {
+		return 1;
+	}
+	else return 0;
+
+
 }
 
 
@@ -155,6 +207,7 @@ void* sys_sbrk(int numOfPages)
 	/*Remove this line before start coding*/
 	//return (void*)-1 ;
 	/*====================================*/
+	//cprintf("----------(chunk sbrk called with size = %d)-----------\n", PAGE_SIZE * numOfPages);
 	struct Env* env = get_cpu_proc(); //the current running Environment to adjust its break limit
 
 	/////////
@@ -163,6 +216,8 @@ void* sys_sbrk(int numOfPages)
 	uint32 increasing = numOfPages * PAGE_SIZE; // size to be allocated
 	uint32 last_address = env->sbreak + increasing;
 	uint32 old_sbrk = env->sbreak;
+//	cprintf("old sbreak = %x\n", old_sbrk);
+//	cprintf("hlimit = %x\n", env->hlimit);
 
 	if(last_address > env->hlimit)
 	{
@@ -172,22 +227,29 @@ void* sys_sbrk(int numOfPages)
 
 	//page address
 	uint32 it = env->sbreak;
+	//cprintf("old sbreak: %x\n", it);
 
+	//c//printf("flag a\n");
 	// mark the range
 	for(int32 i = 0 ; i < numOfPages ; i++, it += PAGE_SIZE) {
 		//MARK
-		mark_page(it, env);
+		mark_page(it, env, PAGE_MARKED);
 	}
+
+	//cprintf("flag b\n");
 
 	// update sbreak pointer
 	env->sbreak = last_address;
+//	cprintf("flag c\n");
 
 	// adjusting end block
-	int32 *new_end_block = (int32 *)(last_address - sizeof(int));
-	*new_end_block = 1;
-
+//	cprintf("flag d\n");
+//
+//	cprintf("flag e\n");
 	// updating end block in env
-	env->end_bound = (uint32)new_end_block;
+	//env->end_bound = (uint32)new_end_block;
+
+//	cprintf("chunk sbrk done its job\n");
 	return (void*)old_sbrk;
 
 
@@ -197,34 +259,18 @@ void* sys_sbrk(int numOfPages)
 // 1) ALLOCATE USER MEMORY:
 //=====================================
 
-int32 uhis_free_page(uint32 page_va, struct Env* e) {
-	// page_va is the virtual address within some page , could be with offset doesn't matter.
-
-	uint32* ptr_page_table;
-	int status = get_page_table(e->env_page_directory, page_va, &ptr_page_table);
-	/*
-	masking to get the 9th bit
-	va       -> 00000000 00000000 00101100 11011001
-	mask     -> 00000000 00000000 00000010 00000000
-	mask&va  -> 00000000 00000000 00000000 00000000
-	*/
-
-	uint32 mask = (1 << 10);
-	return !((ptr_page_table[PTX(page_va)]&mask)); // if 0 its not marked , if other it is set
-}
-
 uint32 uhget_pgallocation_address(uint32 size, struct Env* e) {
 
 
-	uint32 start = e->hlimit+PAGE_SIZE;
+	uint32 it_start = e->hlimit+PAGE_SIZE;
 	uint32* page_directory = e->env_page_directory;
 	uint32 pg_alloc_last = e->pgalloc_last;
 
-	uint32 it = start;
+	uint32 it = it_start;
 	uint32 curSize = 0;
 	uint32 pgalloc_ptr = 0;
 
-	cprintf("serchig for space = %umb, sratring from %p to %p\n",(size/(1<<20)), (void*)start, (void*)pg_alloc_last);
+	//cprintf("searchig for space = %umb, sratring from %p to %p\n",(size/(1<<20)), (void*)it_start, (void*)pg_alloc_last);
 	for (; curSize < size && it < pg_alloc_last; it += PAGE_SIZE) {
 
 		if (uhis_free_page(it, e)) { // if free page
@@ -250,6 +296,8 @@ uint32 uhget_pgallocation_address(uint32 size, struct Env* e) {
 
 void allocate_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 {
+
+	cprintf("-------------allocate_user_mem called-------------\n");
 	/*====================================*/
 	/*Remove this line before start coding*/
 	//	inctst();
@@ -286,9 +334,11 @@ void allocate_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 		}
 		pt_set_page_permissions(e->env_page_directory, it, 0, PERM_PRESENT);
 
-		mark_page(it, e);
+		mark_page(it, e, PAGE_MARKED);
 
 	}
+
+	mark_page(virtual_address, e, PAGE_MARK_START);
 }
 
 //=====================================
@@ -304,35 +354,57 @@ void free_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 //	return;
 	/*====================================*/
 
-
 	//TODO: [PROJECT'24.MS2 - #15] [3] USER HEAP [KERNEL SIDE] - free_user_mem
 	// Write your code here, remove the panic and write your code
-	panic("free_user_mem() is not implemented yet...!!");
+	//panic("free_user_mem() is not implemented yet...!!");
 
-
-	uint32 num_of_pages = size/PAGE_SIZE;
 	uint32 va = virtual_address;
 
-	uint32 start_page = virtual_address/PAGE_SIZE;
-	// the page num of the last page in the range
-	uint32 end_page = (virtual_address + size - PAGE_SIZE)/PAGE_SIZE;
+	//uint32 start_page = virtual_address/PAGE_SIZE;
 
-	// 1. unmark and free the processes
-	for(int i = 0; i<num_of_pages; i++, va+=PAGE_SIZE) {
-		// unmark page and update the size array
-		//UNMARK
-		//
+	// the page num of the last page in the range
+	// uint32 end_page = (virtual_address + size - PAGE_SIZE)/PAGE_SIZE;
+	size = 0;
+//	cprintf("done0\n");
+	// 1. unmark and free the pages
+	while(va < USER_HEAP_MAX && va >= e->hlimit+PAGE_SIZE &&
+			((!is_start_of_range(va, e) && !uhis_free_page(va, e)) || va == virtual_address)) {
+//		cprintf("va = %x\n", va);
+//		if(!is_start_of_range(va, e)) {
+//			cprintf("start_range is false\n");
+//		} else {
+//			cprintf("start_range is true\n");
+//		}
+//		if(!uhis_free_page(va, e)) {
+//			cprintf("uhis_free_page is false\n");
+//		} else {
+//			cprintf("uhis_free_page is true\n");
+//		}
+
+//		cprintf("hi 1\n");
+		// unmark the page
 
 		// free the page
 		uint32 *page_table_ptr;
 		struct FrameInfo* frame_info_ptr = get_frame_info(e->env_page_directory, va, &page_table_ptr);
-		kfree((void*)va);
-//		unmap_frame(e->env_page_directory, va);
-//		free_frame(frame_info_ptr);
+//		cprintf("frame_ptr = %p\n", frame_info_ptr);
+//		cprintf("hi 2\n");
+		if(frame_info_ptr != NULL) {
+			free_frame(frame_info_ptr);
+			unmap_frame(e->env_page_directory, va);
+		}
+//		cprintf("hi 3\n");
+//		cprintf("hi 4\n");
 
 		// remove the page from page file
 		pf_remove_env_page(e, va);
+//		cprintf("hi 5\n");
+		mark_page(va, e, FREE_PAGE);
+		va+=PAGE_SIZE;
+		size+=PAGE_SIZE;
 	}
+
+	//cprintf("done1\n");
 
 	// 2. remove page from the page file (done in the above loop for each page)
 
@@ -347,7 +419,7 @@ void free_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 			held_ws_element = NULL;
 		}
 
-		uint32 page_num = ws_element->virtual_address /PAGE_SIZE;
+
 		if((char*)(ws_element->virtual_address) >= (char*)virtual_address &&
 				(char*)(ws_element->virtual_address) < (char*)(virtual_address + size)) {
 			// if the current working set element within the given range
@@ -362,6 +434,16 @@ void free_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 		LIST_REMOVE(&(e->page_WS_list), held_ws_element);
 	}
 
+	//cprintf("done2\n");
+
+	// move the  pgalloc_last pointer down if exist some free pages before it.
+	uint32 ptr = e->pgalloc_last - PAGE_SIZE;
+	while(ptr >= (e->hlimit + PAGE_SIZE) && uhis_free_page(ptr, e)) {
+		e->pgalloc_last -= PAGE_SIZE;
+		ptr -= PAGE_SIZE;
+	}
+
+	//cprintf("done3\n");
 
 
 	//TODO: [PROJECT'24.MS2 - BONUS#3] [3] USER HEAP [KERNEL SIDE] - O(1) free_user_mem

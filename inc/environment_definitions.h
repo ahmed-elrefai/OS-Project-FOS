@@ -135,14 +135,7 @@ struct Env {
 	uint32 hlimit;
 	uint32 end_bound;
 	uint32 pgalloc_last;
-	///453376//
-	// 524290
-	// 453,376
 
-	// 00000000 00000000 00000000 00000000
-	// 3,988,774,724
-	// delta = 731mb
-	// 796917760
 
 	void* returned_address;
 
