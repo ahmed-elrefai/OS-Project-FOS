@@ -138,6 +138,8 @@ struct Env {
 
 
 	void* returned_address;
+	void* shr_returned_address;
+	void* get_shr_returned_address;
 
 	//for page file management
 	uint32* disk_env_pgdir;
@@ -201,6 +203,9 @@ struct Env {
 	//2020
 	uint32 nPageIn, nPageOut, nNewPageAdded;
 	uint32 nClocks ;
+
+	uint32 sharedObjectsCounter;
+
 
 };
 

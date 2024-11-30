@@ -134,13 +134,16 @@ void mark_page(uint32 page_va, struct Env* env, uint32 state) {
 
 
 	if(state == FREE_PAGE) {
+		//cprintf("%p free done\n", (void*)page_va);
 		ptr_page_table[PTX(page_va)] &= (~(1<<10));
 		ptr_page_table[PTX(page_va)] &= (~(1<<11));
 		return;
 	}
 
 	ptr_page_table[PTX(page_va)] |= (1 << 10);
+	//cprintf("%p mark done\n", (void*)page_va);
 	if(state == PAGE_MARK_START) {
+		//cprintf("%p mark start done\n", (void*)page_va);
 		ptr_page_table[PTX(page_va)] |= (1<<11);
 		cprintf("address %x marked start\n", page_va);
 	}
@@ -156,12 +159,6 @@ int32 uhis_free_page(uint32 page_va, struct Env* env) {
 	if(status == TABLE_NOT_EXIST) {
 		ptr_page_table = (uint32*)create_page_table(env->env_page_directory, page_va);
 	}
-	/*
-	masking to get the 9th bit
-	va       -> 00000000 00000000 00101100 11011001
-	mask     -> 00000000 00000000 00000010 00000000
-	mask&va  -> 00000000 00000000 00000000 00000000
-	*/
 
 	uint32 mask = (1 << 10);
 	return !((ptr_page_table[PTX(page_va)]&mask)); // if 0 its not marked , if other it is set
@@ -332,7 +329,7 @@ void allocate_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 		if(page_status == TABLE_NOT_EXIST) {
 			create_page_table(e->env_page_directory, it);
 		}
-		pt_set_page_permissions(e->env_page_directory, it, 0, PERM_PRESENT);
+		pt_set_page_permissions(e->env_page_directory, it, 0, PERM_PRESENT | PERM_USER); // edited
 
 		mark_page(it, e, PAGE_MARKED);
 
@@ -367,7 +364,7 @@ void free_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 	size = 0;
 //	cprintf("done0\n");
 	// 1. unmark and free the pages
-	while(va < USER_HEAP_MAX && va >= e->hlimit+PAGE_SIZE &&
+	while((va < USER_HEAP_MAX && va >= e->hlimit+PAGE_SIZE) &&
 			((!is_start_of_range(va, e) && !uhis_free_page(va, e)) || va == virtual_address)) {
 //		cprintf("va = %x\n", va);
 //		if(!is_start_of_range(va, e)) {
@@ -384,15 +381,19 @@ void free_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 //		cprintf("hi 1\n");
 		// unmark the page
 
+
 		// free the page
 		uint32 *page_table_ptr;
-		struct FrameInfo* frame_info_ptr = get_frame_info(e->env_page_directory, va, &page_table_ptr);
+		struct FrameInfo* frame_info_ptr = NULL;
+		frame_info_ptr = get_frame_info(e->env_page_directory, va, &page_table_ptr);
 //		cprintf("frame_ptr = %p\n", frame_info_ptr);
 //		cprintf("hi 2\n");
 		if(frame_info_ptr != NULL) {
 			free_frame(frame_info_ptr);
 			unmap_frame(e->env_page_directory, va);
 		}
+		//else cprintf("null frame info\n");
+
 //		cprintf("hi 3\n");
 //		cprintf("hi 4\n");
 
@@ -443,10 +444,10 @@ void free_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 		ptr -= PAGE_SIZE;
 	}
 
-	//cprintf("done3\n");
+	//cprintf("done freeing\n");
 
 
-	//TODO: [PROJECT'24.MS2 - BONUS#3] [3] USER HEAP [KERNEL SIDE] - O(1) free_user_mem
+	//TODO: [PROJECT'24.MS2 - BONUS#3] [3] USER HEAP [KERNEL SIDE] - O(1) free_user_mem // done
 }
 
 //=====================================
