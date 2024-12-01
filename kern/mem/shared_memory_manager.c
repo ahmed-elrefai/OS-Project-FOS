@@ -108,7 +108,7 @@ struct Share* create_share(int32 ownerID, char* shareName, uint32 size, uint8 is
 	struct Share *share_obj = (struct Share *)kmalloc(sizeof(struct Share));
 
 	if(share_obj==NULL )
-	{   cprintf("flag create_share 3\n");
+	{   //cprintf("flag create_share 3\n");
 		return NULL;
 	}
 	//cprintf("flag create_share 3.5\n");
@@ -295,7 +295,7 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size, uint8 isWrit
 
 	if (ret_add == myenv->pgalloc_last) {
 		if((myenv->pgalloc_last + total_size) > (uint32)USER_HEAP_MAX) {
-			cprintf("damn, there is not allocation space to be allocated in uheap\n");
+			//cprintf("damn, there is not allocation space to be allocated in uheap\n");
 			return E_NO_SHARE;
 		}
 
@@ -378,7 +378,7 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 	struct Env* myenv = get_cpu_proc(); //The calling environment
 
     struct Share* cur_share = get_share(ownerID, shareName);
-    cprintf("after get_share\n");
+    //cprintf("after get_share\n");
     if(cur_share == NULL) {
     	return E_SHARED_MEM_NOT_EXISTS ;
     }
@@ -397,7 +397,7 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 		//cprintf("it = last\n");
 
 		if((myenv->pgalloc_last + total_size) > (uint32)USER_HEAP_MAX) {
-			cprintf("returned not share\n");
+			//cprintf("returned not share\n");
 			return E_NO_SHARE;
 		}
 	    myenv->pgalloc_last += total_size;

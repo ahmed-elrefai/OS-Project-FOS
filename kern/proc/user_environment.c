@@ -884,7 +884,7 @@ void* create_user_kern_stack(uint32* ptr_user_page_directory) {
 
     if (status != TABLE_IN_MEMORY) {
     	page_table = create_page_table(ptr_user_page_directory, (uint32)kernel_stack);
-    	cprintf("error404, see stack function\n");
+    	//cprintf("error404, see stack function\n");
     }
 
     //page_table[PTX(kernel_stack)] = page_table[PTX(kernel_stack)] & (~PERM_PRESENT);
@@ -940,7 +940,7 @@ void initialize_uheap_dynamic_allocator(struct Env* e, uint32 daStart, uint32 da
 	//panic("initialize_uheap_dynamic_allocator() is not implemented yet...!!");
 
 	//dynalloc
-	cprintf("init start: %x, init limit: %x\n", daStart, daLimit);
+	//cprintf("init start: %x, init limit: %x\n", daStart, daLimit);
 	e->start = daStart;
 	e->sbreak = daStart;
 	e->hlimit = daLimit;

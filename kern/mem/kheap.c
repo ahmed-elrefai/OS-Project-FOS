@@ -51,7 +51,7 @@ void synced_unmap_frame(uint32 *ptr_page_directory, uint32 virtual_address) {
 //	Otherwise (if no memory OR initial size exceed the given limit): PANIC
 int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate, uint32 daLimit)
 {
-	cprintf("---------------initialize_kheap_dynamic_allocator called---------------\n");
+	//cprintf("---------------initialize_kheap_dynamic_allocator called---------------\n");
 	//TODO: [PROJECT'24.MS2 - #01] [1] KERNEL HEAP - initialize_kheap_dynamic_allocator
 	// Write your code here, remove the panic and write your code
 	//panic("initialize_kheap_dynamic_allocator() is not implemented yet...!!");
@@ -76,22 +76,13 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 		panic("initialize_kheap_dynamic_allocator() exceeds hard limit..!!");
 	}
 
-	//step2
-	//2.1 create table if   doesn't exist (for sure)
-//	uint32 *check_page_table = NULL;
-//	int32 r = get_page_table(ptr_page_directory , start_kernal_heap , &check_page_table);
-//	if(r!=TABLE_IN_MEMORY) {
-//		//check_page_table = (uint32*)
-//		create_page_table(ptr_page_directory ,  start_kernal_heap);
-//		panic("initialize_kheap_dynamic_allocator() tableee ..!!");
-//	}
 
 	//2.2 allocate all pages and map
 	uint32 number_of_pages = ROUNDUP(initSizeToAllocate, PAGE_SIZE) / PAGE_SIZE; // 1007617 = (daStart - KERNEL_HEAP_MAX) ,,, (daStart + initSizeToAllocate )
 	//print
-	cprintf("dastart : %x \n", daStart);
-	cprintf("daLimit : %x \n", hard_limit);
-	cprintf("number_of_pages : %d \n", number_of_pages);
+//	cprintf("dastart : %x \n", daStart);
+//	cprintf("daLimit : %x \n", hard_limit);
+//	cprintf("number_of_pages : %d \n", number_of_pages);
 	//page address
     uint32 va = daStart;
 	for(uint32 i = 0 ; i < number_of_pages ; i++, va = va + PAGE_SIZE)
@@ -166,7 +157,7 @@ void* sbrk(int numOfPages)
 		struct FrameInfo *ptr_frame_info = get_frame_info(ptr_page_directory , va , &ptr_table);
 		if(ptr_frame_info != NULL){
 			// this shouldn't execute at all
-			cprintf("LOL\n");
+			//cprintf("LOL\n");
 			continue;
 		}
 
@@ -271,7 +262,7 @@ void* kmalloc(unsigned int size)
 		if (it == pgalloc_last) {
 //			cprintf("inside\n");
 			if (total_size > (KERNEL_HEAP_MAX - pgalloc_last)) {
-				cprintf("[kmalloc ret = null]no enough memory available\n");
+				//cprintf("[kmalloc ret = null]no enough memory available\n");
 				return NULL;
 			}
 			pgalloc_last += total_size;
@@ -379,13 +370,6 @@ unsigned int kheap_physical_address(unsigned int virtual_address)
 		return 0;
 	}
 
-	/*
-	 * masking to get offset
-	 * va   	-> 00000000 00000000 00101100 11011001
-	 * mask 	-> 00000000 00000000 00001111 11111111
-	 * mask&va 	-> 00000000 00000000 00001100 11011001 -> the offset to be added to the address
-	 */
-
 	uint32 mask = (1 << 12)-1;
 	uint32 offset = (mask&virtual_address);
 
@@ -435,10 +419,138 @@ unsigned int kheap_virtual_address(unsigned int physical_address) {
 //	A call with virtual_address = null is equivalent to kmalloc().
 //	A call with new_size = zero is equivalent to kfree().
 
+void * update_number_of_allocated_pages(uint32 it, uint32 num_pages, uint32 num_page_start, uint32 num_page_end){
+	uint32 result = it;
+	//uint32 num_pages = total_size/PAGE_SIZE;
+	for (int i = 0, cnt = num_pages; i < num_pages; i++, it += PAGE_SIZE, cnt--) {
+		//cprintf("flag2\n");
+        if(i + 1 >= num_page_start && i + 1 <= num_page_end){
+        	struct FrameInfo *newFrame = NULL;
+			int state = allocate_frame(&newFrame);
+			if (state == E_NO_MEM) {
+				return NULL;
+			}
+			state = synced_map_frame(ptr_page_directory, newFrame, it, PERM_PRESENT | PERM_WRITEABLE);
+        }
+
+		// saving the number of allocated pages.
+		uint32 page_num = ((uint32)it) / (uint32)PAGE_SIZE;
+		allocated_pages_num[page_num] = cnt;
+
+	}
+	return (void*)result;
+}
+
+void *realloc_page(void *virtual_address, uint32 new_size){
+
+	/* Validations --> done
+	 * new_size = ROUND_UP(new_size, PAGE_SIZE) //so After this line all sizes are (n* PAGE_SIZE)
+	 * size_difference = new_size - old_size
+	 * a) size_difference == 0 --> return old address with the old size
+	 *               case 1: new size before round up < (n*PAGE_SIZE) "size el deleted --> internal fragmentation"  //8 --> 7
+	 *               case 2: new size before round up == (n*PAGE_SIZE)) "new_size same old_size"
+	 * b) size_difference > 0  'increasing'
+	 * 			find size_freePages After old size till end(pageAllocated || KERNEL_HEAP_MAX)
+	 * 			1) size_freePages == size_difference  --> return old address; //old address with new size, update number of allocated pages, allocated
+	 * 			2) size_freePages != size_difference  --> return if( kmalloc(new_size) == NULL) return old address;  else return kk;//new location
+	 * c) size_difference < 0  'decreasing'
+	 * 			free the pages after old address + new_size and set in array "addressNewFreePages = old address + new_size"
+	 * 			kfree(addressNewFreePages);
+	 * 			update_number_allocated_pages, allocated = 0;
+	 * 			return old address; //old address with new size  'same location'
+	 * */
+	// check this va is allocated or not
+	 uint32 total_size = ((new_size + PAGE_SIZE - 1)/PAGE_SIZE) * PAGE_SIZE; //ROUND_UP
+
+	 // get old_size(size of allocated_pages for this virtual_address)
+	 uint32 page_num = ((uint32)virtual_address) / (uint32)PAGE_SIZE; // get page index
+	 uint32 allocated_pages_number = allocated_pages_num[page_num];
+	 uint32 old_size = allocated_pages_number * (uint32)PAGE_SIZE;
+
+	 // find size_difference
+	 int32 size_difference = (int32)total_size - (int32)old_size;
+	 // 3 cases
+	 if(size_difference == 0) return virtual_address;
+	 else if(size_difference > 0) {
+
+		 uint32 num_of_new_pages = (uint32)size_difference / PAGE_SIZE;
+		 uint32 it = (uint32)virtual_address + old_size;
+		 //loop
+		 uint32 page_num = ((uint32)it) / (uint32)PAGE_SIZE;
+
+		 while(va_page_num[page_num] == -1) {
+
+			 num_of_new_pages--;
+			 if(num_of_new_pages == 0){
+				 //allocate
+				 void * returnfun = update_number_of_allocated_pages((uint32)virtual_address, total_size / (uint32)PAGE_SIZE, allocated_pages_number + 1, total_size / (uint32)PAGE_SIZE);
+				 if(returnfun == NULL) return virtual_address;
+				 return virtual_address; //return same address with new size
+			 }
+			 it += PAGE_SIZE;
+			 page_num = ((uint32)it) / (uint32)PAGE_SIZE;
+		 }
+		 return kmalloc((unsigned int)new_size);
+
+	 }
+	 else if(size_difference < 0){
+		 uint32 addressNewFreePages = (uint32)virtual_address + total_size;
+		 //free the allocatedPages i don't need
+		 kfree((void*)addressNewFreePages);
+		 // update the number of allocated pages.
+		 void * returnfun = update_number_of_allocated_pages(addressNewFreePages, (uint32)(-1 * size_difference) / (uint32)PAGE_SIZE, 0, 0);
+		 if(returnfun == NULL) return virtual_address;
+		 return virtual_address; //return same address with new size
+	 }
+
+	return virtual_address;
+}
 void *krealloc(void *virtual_address, uint32 new_size)
 {
 	//TODO: [PROJECT'24.MS2 - BONUS#1] [1] KERNEL HEAP - krealloc
 	// Write your code here, remove the panic and write your code
-	return NULL;
-	panic("krealloc() is not implemented yet...!!");
+	//Validations
+	//	1) va && 0 --> kfree & return NULL
+	//	2) NULL && size --> kmalloc & return the new address
+	//	3) NULL && 0 --> do nothing (return NULL)
+    if(virtual_address != NULL && new_size == 0){
+    	kfree(virtual_address);
+    	return NULL;
+    }
+    if(virtual_address == NULL && new_size > 0){
+    	 return kmalloc((unsigned int)new_size);
+    }
+    if(virtual_address == NULL && new_size == 0){
+    	return NULL;
+    }
+
+	//  4) va && size :
+	// Blocks
+	if ((char*)virtual_address < (char*)segment_break && (char*)virtual_address >= (char*)(start_kernal_heap + sizeof(int))) {
+
+		if(new_size <= DYN_ALLOC_MAX_BLOCK_SIZE){
+			return realloc_block_FF(virtual_address, new_size);
+		}
+		else {
+			//'new location in page allocator'
+			kfree((void*)virtual_address);
+			return kmalloc((unsigned int)new_size);
+		}
+	}
+	// Pages
+	else if((char*)virtual_address >= (char*)(hard_limit + sizeof(int)) && (char*)virtual_address < (char*)KERNEL_HEAP_MAX) {
+		if(new_size >= PAGE_SIZE){
+			return realloc_page(virtual_address, new_size);
+		}
+		else {
+
+			kfree((void*)virtual_address);
+			return kmalloc((unsigned int)new_size); //'new location in block allocator'
+		}
+
+	}
+
+	return virtual_address;
+
+	//panic("krealloc() is not implemented yet...!!");
 }

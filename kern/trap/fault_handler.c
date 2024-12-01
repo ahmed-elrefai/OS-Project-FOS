@@ -187,16 +187,16 @@ void fault_handler(struct Trapframe *tf)
 			//your code is here
 			//cprintf("FAULT HANDLER I - Check for invalid pointers called \n");
 			if(fault_va >= KERNEL_BASE && fault_va <= KERNEL_HEAP_MAX) {
-				cprintf("[FAULT HANDLER I - Check for invalid pointers]pointing to kernel address address\n");
+				//cprintf("[FAULT HANDLER I - Check for invalid pointers]pointing to kernel address address\n");
 				env_exit();
 
 			}
 			else if((is_page_read_write(faulted_env, fault_va))) {
-				cprintf("[FAULT HANDLER I - Check for invalid pointers]it must be read only. \n");
+				//cprintf("[FAULT HANDLER I - Check for invalid pointers]it must be read only. \n");
 				env_exit();
 				//return;
 			}else if(fault_va < USER_HEAP_MAX && fault_va >= USER_HEAP_START && !is_marked_page(faulted_env, fault_va)) {
-				cprintf("[FAULT HANDLER I - Check for invalid pointers]unmarked page\n");
+				//cprintf("[FAULT HANDLER I - Check for invalid pointers]unmarked page\n");
 				env_exit();
 			}
 
@@ -268,7 +268,7 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 			int iWS =faulted_env->page_last_WS_index;
 			uint32 wsSize = env_page_ws_get_size(faulted_env);
 	#endif
-//		cprintf("PLACEMENT=========== fault_va: %p ==============WS Size = %d\n", fault_va, wsSize );
+			//cprintf("PLACEMENT=========================WS Size = %d\n", wsSize );
 //		cprintf("PLACEMENT=========================WS MX Size = %d\n", faulted_env->page_WS_max_size);
 		if(wsSize < (faulted_env->page_WS_max_size)) {
 
@@ -281,7 +281,7 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 			uint32 *ptr_page_table = NULL;
 			int status =  get_page_table(faulted_env->env_page_directory, (uint32)fault_va, &ptr_page_table);
 			if (status == TABLE_NOT_EXIST) {
-				cprintf("PLACEMENT -> page table doesn't exist\n");
+				//cprintf("PLACEMENT -> page table doesn't exist\n");
 				ptr_page_table = create_page_table(faulted_env->env_page_directory, (uint32)fault_va);
 			}
 
