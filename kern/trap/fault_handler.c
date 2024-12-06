@@ -5,6 +5,8 @@
  *      Author: HP
  */
 
+
+
 #include "trap.h"
 #include <kern/proc/user_environment.h>
 #include <kern/cpu/sched.h>
@@ -76,11 +78,15 @@ int is_page_read_write(struct Env *faulted_env, uint32 fault_va) {
 uint32 is_marked_page(struct Env* faulted_env, uint32 va) {
     // check if the 10th bit is set to 1, if not return 0
 
-	cprintf(">checking validation for page at %p\n", (void*)va);
-	cprintf("->>>address in MB>>> %d mb\n", ((va)>>20));
+//	cprintf(">checking validation for page at %p\n", (void*)va);
+//	cprintf("->>>address in MB>>> %d mb\n", ((va)>>20));
 
     uint32* ptr_page_table;
     int status = get_page_table(faulted_env->env_page_directory, va, &ptr_page_table);
+    if(status == TABLE_NOT_EXIST) {
+		//ptr_page_table = (uint32*)create_page_table(faulted_env->env_page_directory, va);
+    	return 0;
+	}
     /*
 	masking to get the 9th bit
 	va       -> 00000000 00000000 00101100 11011001
@@ -262,8 +268,8 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 			int iWS =faulted_env->page_last_WS_index;
 			uint32 wsSize = env_page_ws_get_size(faulted_env);
 	#endif
-		cprintf("PLACEMENT=========== fault_va: %p ==============WS Size = %d\n", fault_va, wsSize );
-		cprintf("PLACEMENT=========================WS MX Size = %d\n", faulted_env->page_WS_max_size);
+//		cprintf("PLACEMENT=========== fault_va: %p ==============WS Size = %d\n", fault_va, wsSize );
+//		cprintf("PLACEMENT=========================WS MX Size = %d\n", faulted_env->page_WS_max_size);
 		if(wsSize < (faulted_env->page_WS_max_size)) {
 
 			//cprintf("working set before PLACEMENT:\n");
@@ -287,30 +293,31 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 			ss = map_frame(faulted_env->env_page_directory, framee, fault_va, perms);
 			//faulted_env->is_marked[(fault_va - USER_HEAP_START)/PAGE_SIZE] = 1;
 
-
-
 			int ret = pf_read_env_page(faulted_env, (void *)fault_va);
 			if (ret == E_PAGE_NOT_EXIST_IN_PF) {
-				cprintf("Placement> the page not found on disk! :(\n");
-				// Check if the faulted address is in the valid stack or heap range
-				if (fault_va >= KERNEL_HEAP_START && fault_va < KERNEL_HEAP_MAX){
-					cprintf("(in kernel heap): faulted va: %x\n", (void*)faulted_env);
-				}else if(fault_va >= USER_HEAP_START && fault_va < USER_HEAP_MAX)
-				{
-					cprintf("(in user heap): faulted va: %x\n", (void*)faulted_env);
-				}
-				else if (fault_va >= (USTACKBOTTOM+PAGE_SIZE) && fault_va < USTACKTOP){
-					cprintf("(in stack): faulted va: %x\n", (void*)faulted_env);
-				}
+//				cprintf("Placement> the page not found on disk! :(\n");
+//				// Check if the faulted address is in the valid stack or heap range
+//				if (fault_va >= KERNEL_HEAP_START && fault_va < KERNEL_HEAP_MAX) {
+//					cprintf("(in kernel heap): faulted va: %x\n", (void*)fault_va);
+//				}else if(fault_va >= USER_HEAP_START && fault_va < USER_HEAP_MAX)
+//				{
+//					cprintf("(in user heap): faulted va: %x\n", (void*)fault_va);
+//				}
+//				else if (fault_va >= (USTACKBOTTOM) && fault_va < USTACKTOP){
+//					cprintf("(in stack): faulted va: %x\n", (void*)fault_va);
+//				} else {
+//					cprintf("(wooow): faulted va: %x\n", (void*)fault_va);
+//				}
 
-				if (!(fault_va >= (USTACKBOTTOM+PAGE_SIZE) && fault_va < USTACKTOP)) {
+				if (!(fault_va >= (USTACKBOTTOM) && fault_va < USTACKTOP)) {
 					if (!(fault_va >= (USER_HEAP_START) && fault_va < USER_HEAP_MAX)){
+						//cprintf("exited with conditions\n");
 						env_exit();
 					}
-//					env_exit();
+
 				}
 			} else {
-				cprintf("Placement> the page found on disk successcully! :)\n");
+				//cprintf("Placement> the page found on disk successcully! :)\n");
 			}
 
 
@@ -328,9 +335,9 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 
 				 //if(ws_element->virtual_address >= USER_HEAP_START)
 
-				 cprintf("working set -> ws element added\n");
+				 //cprintf("working set -> ws element added\n");
 			} else {
-				cprintf("full working set -> can't add the ws element\n");
+				//cprintf("full working set -> can't add the ws element\n");
 			}
 
 

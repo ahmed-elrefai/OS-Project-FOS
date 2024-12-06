@@ -37,17 +37,18 @@ void* malloc(uint32 size)
 	//to check the current strategy
 
 	//uint32 va = myEnv->start;
-	uint32 total_size = ((size+PAGE_SIZE-1)/PAGE_SIZE)*PAGE_SIZE;
+
 	if (sys_isUHeapPlacementStrategyFIRSTFIT()) {
-		if (size <= (uint32)DYN_ALLOC_MAX_BLOCK_SIZE) {
-			cprintf("[uheap block alloc]\n");
+		if (size <= DYN_ALLOC_MAX_BLOCK_SIZE) {
+			//cprintf("[uheap block alloc]\n");
 			return alloc_block_FF(size);
 		}else {
-			cprintf("[uheap page alloc]\n");
+//			cprintf("[uheap page alloc]\n");
 
 			//cprintf("result = %x\n", result);
-
+			uint32 total_size = ((size+PAGE_SIZE-1)/PAGE_SIZE)*PAGE_SIZE;
 			sys_allocate_user_mem(USER_HEAP_START+(5*PAGE_SIZE), total_size);
+			//cprintf("page alloc return address: %p\n", myEnv->returned_address);
 			return myEnv->returned_address;
 		}
 	} else if(sys_isUHeapPlacementStrategyBESTFIT()) { // best fit strategy
@@ -69,6 +70,7 @@ void free(void* virtual_address) {
 	// Write your code here, remove the panic and write your code
 	//panic("free() is not implemented yet...!!");
 
+	cprintf("-----------free called with va = %p---------\n", virtual_address);
 	if (virtual_address == NULL) {
 			panic("ufree() : the provided address is NULL..!!");
 			return;
@@ -82,9 +84,9 @@ void free(void* virtual_address) {
 		cprintf("(user free)free using the dynalloc.\n");
 		free_block(virtual_address);
 		return;
-	} else if((char*)virtual_address >= (char*)(myEnv->hlimit + sizeof(int)) && (char*)virtual_address < (char*)KERNEL_HEAP_MAX) {
+	} else if((char*)virtual_address >= (char*)(myEnv->hlimit + PAGE_SIZE) && (char*)virtual_address < (char*)USER_HEAP_MAX) {
 		// unmark pages and free them
-
+		cprintf("(uheap free, va = %p)free using the page allocator.\n", virtual_address);
 		// get the size of the current allocated pages
 		// uint32 page_num = (((uint32)virtual_address) - USER_HEAP_START)/PAGE_SIZE;
 		// uint32 pages = 0;
@@ -97,7 +99,7 @@ void free(void* virtual_address) {
 		//			unmark_page(va);
 		//		}
 
-		sys_free_user_mem((uint32)virtual_address, (PAGE_SIZE));
+		sys_free_user_mem((uint32)virtual_address, (2*PAGE_SIZE));
 	} else {
 		panic("(user free) the provided address is invalid!\n");
 	}
@@ -115,8 +117,19 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 	//==============================================================
 	//TODO: [PROJECT'24.MS2 - #18] [4] SHARED MEMORY [USER SIDE] - smalloc()
 	// Write your code here, remove the panic and write your code
-	panic("smalloc() is not implemented yet...!!");
-	return NULL;
+	//panic("smalloc() is not implemented yet...!!");
+
+	//pass any adress and handle all cases in kernel side
+	//cprintf("flag smalloc 1\n");
+	int ret = sys_createSharedObject(sharedVarName , size , isWritable ,(void *)(USER_HEAP_START +(3*PAGE_SIZE)));
+	//cprintf("flag smalloc 2\n");
+	if(ret==E_NO_SHARE || ret==E_SHARED_MEM_EXISTS )
+	{   //cprintf("flag smalloc 3\n");
+		return NULL;
+	}
+	//cprintf("flag smalloc 4\n");
+	//cprintf("myEnv return address = %x \n" ,myEnv->returned_address);
+	return myEnv->shr_returned_address;
 }
 
 //========================================
@@ -126,10 +139,18 @@ void* sget(int32 ownerEnvID, char *sharedVarName)
 {
 	//TODO: [PROJECT'24.MS2 - #20] [4] SHARED MEMORY [USER SIDE] - sget()
 	// Write your code here, remove the panic and write your code
-	panic("sget() is not implemented yet...!!");
-	return NULL;
-}
+	//panic("sget() is not implemented yet...!!");
 
+	int ret = sys_getSharedObject(ownerEnvID, sharedVarName, (void *)(USER_HEAP_START + 3*PAGE_SIZE));
+	if(ret == E_SHARED_MEM_NOT_EXISTS || ret == E_NO_SHARE)
+	{
+		cprintf("gets returned null\n");
+		return NULL;
+	}
+
+	//cprintf("the returned sget address: %p\n", myEnv->get_shr_returned_address);
+	return  myEnv->get_shr_returned_address;
+}
 
 //==================================================================================//
 //============================== BONUS FUNCTIONS ===================================//
@@ -150,7 +171,10 @@ void sfree(void* virtual_address)
 {
 	//TODO: [PROJECT'24.MS2 - BONUS#4] [4] SHARED MEMORY [USER SIDE] - sfree()
 	// Write your code here, remove the panic and write your code
-	panic("sfree() is not implemented yet...!!");
+	//panic("sfree() is not implemented yet...!!");
+	int32 anyID = 4940;
+	sys_freeSharedObject(anyID, virtual_address);
+
 }
 
 //=================================

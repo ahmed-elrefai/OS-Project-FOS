@@ -940,6 +940,7 @@ void initialize_uheap_dynamic_allocator(struct Env* e, uint32 daStart, uint32 da
 	//panic("initialize_uheap_dynamic_allocator() is not implemented yet...!!");
 
 	//dynalloc
+	cprintf("init start: %x, init limit: %x\n", daStart, daLimit);
 	e->start = daStart;
 	e->sbreak = daStart;
 	e->hlimit = daLimit;

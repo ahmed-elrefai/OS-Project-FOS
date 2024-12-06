@@ -3,7 +3,7 @@
 #include <inc/memlayout.h>
 #include <inc/dynamic_allocator.h>
 #include "memory_manager.h"
-#define cprintf //
+
 
 // helper functions //
 int synced_map_frame(uint32 *ptr_page_directory, struct FrameInfo *ptr_frame_info, uint32 virtual_address, int perm) {
@@ -137,7 +137,7 @@ void* sbrk(int numOfPages)
 	//TODO: [PROJECT'24.MS2 - #02] [1] KERNEL HEAP - sbrk
 	// Write your code here, remove the panic and write your code
 	//panic("sbrk() is not implemented yet...!!");
-	//cprintf("---------------sbrk called---------------\n");
+//	cprintf("---------------kheap sbrk called ---------------\n");
 	if(numOfPages == 0) return (void*)segment_break; // edge case
 
 	uint32 increasing = numOfPages * PAGE_SIZE; // size to be allocated
@@ -178,22 +178,7 @@ void* sbrk(int numOfPages)
 
 	}
 
-	//cprintf("->>>%d,  ->>%d\n", (void*)(va - sizeof(int))-(void*)(segment_break - sizeof(int)), increasing);
-
-
-	struct blockElement * newBlock = (struct blockElement *)(segment_break); // assign old brk to a block
-	segment_break = va;
-	int32 *end_last_page = (int32 *)(va - sizeof(int));
-
-	*end_last_page = 1;
-
-	// you have to set bounds first before calling free as it checks for them
-	end_bound = (void*) end_last_page;
-
-	set_block_data((void*)newBlock , increasing , 1);
-
-
-	free_block((void*)newBlock);
+	segment_break = last_address;
 
 	return (void*)old_sbrk;
 }
@@ -237,8 +222,8 @@ uint32 get_pgallocation_address(uint32 size, uint32 start, uint32* page_director
 		//cprintf("[-]returning pgalloc_ptr -> pages found before pgalloc_last\n");
 		return pgalloc_ptr;
 	}
-
-	cprintf("[-]returning pgalloc_last\n");
+//
+//	cprintf("[-]returning pgalloc_last\n");
 	return pg_alloc_last;
 
 
@@ -260,7 +245,7 @@ void* kmalloc(unsigned int size)
 		//	SIZE VALIDATION:
 		if(size <= DYN_ALLOC_MAX_BLOCK_SIZE) {
 			void* ret =  alloc_block_FF(size);
-			cprintf("[block allocator]the returned kmalloc address: %p\n", ret);
+			//cprintf("[block allocator]the returned kmalloc address: %p\n", ret);
 			return ret;
 		}
 
@@ -273,18 +258,18 @@ void* kmalloc(unsigned int size)
 		// the problem here................
 		// in returning null
 
-		cprintf("called size: %u, total_size: %u, it: %p\n", size, total_size, (void*)it);
-		cprintf("pgalloc_last: %u\n", pgalloc_last);
-		cprintf("KHM: %u\n", (uint32)KERNEL_HEAP_MAX);
-		cprintf("wanted pages: %u\n", total_size/PAGE_SIZE);
-		cprintf("MX page: %u\n", (KERNEL_HEAP_MAX/PAGE_SIZE));
-		cprintf("last_ptr page: %u\n", (pgalloc_last/PAGE_SIZE));
-		cprintf("av pages: %u\n", (KERNEL_HEAP_MAX/PAGE_SIZE)-(pgalloc_last/PAGE_SIZE));
+//		cprintf("called size: %u, total_size: %u, it: %p\n", size, total_size, (void*)it);
+//		cprintf("pgalloc_last: %u\n", pgalloc_last);
+//		cprintf("KHM: %u\n", (uint32)KERNEL_HEAP_MAX);
+//		cprintf("wanted pages: %u\n", total_size/PAGE_SIZE);
+//		cprintf("MX page: %u\n", (KERNEL_HEAP_MAX/PAGE_SIZE));
+//		cprintf("last_ptr page: %u\n", (pgalloc_last/PAGE_SIZE));
+//		cprintf("av pages: %u\n", (KERNEL_HEAP_MAX/PAGE_SIZE)-(pgalloc_last/PAGE_SIZE));
 
 
 		//		ALLOCATE  & MAP
 		if (it == pgalloc_last) {
-			cprintf("inside\n");
+//			cprintf("inside\n");
 			if (total_size > (KERNEL_HEAP_MAX - pgalloc_last)) {
 				cprintf("[kmalloc ret = null]no enough memory available\n");
 				return NULL;
@@ -312,7 +297,7 @@ void* kmalloc(unsigned int size)
 		}
 
 
-		cprintf("[page allocator]the returned kmalloc address: %p\n", result);
+//		cprintf("[page allocator]the returned kmalloc address: %p\n", result);
 		return (void*)result;
 }
 
@@ -335,7 +320,7 @@ void kfree(void* virtual_address)
 	//	free: whether Blk or Pg allocator
 	if ((char*)virtual_address < (char*)segment_break && (char*)virtual_address >= (char*)start_kernal_heap) {
 		// block allocator: call free;
-		cprintf("free using the dynalloc.\n");
+//		cprintf("free using the dynalloc.\n");
 		free_block(virtual_address);
 		return;
 	} else if((char*)virtual_address >= (char*)(hard_limit + PAGE_SIZE) && (char*)virtual_address < (char*)KERNEL_HEAP_MAX) {

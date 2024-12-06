@@ -135,16 +135,11 @@ struct Env {
 	uint32 hlimit;
 	uint32 end_bound;
 	uint32 pgalloc_last;
-	///453376//
-	// 524290
-	// 453,376
 
-	// 00000000 00000000 00000000 00000000
-	// 3,988,774,724
-	// delta = 731mb
-	// 796917760
 
 	void* returned_address;
+	void* shr_returned_address;
+	void* get_shr_returned_address;
 
 	//for page file management
 	uint32* disk_env_pgdir;
@@ -208,6 +203,9 @@ struct Env {
 	//2020
 	uint32 nPageIn, nPageOut, nNewPageAdded;
 	uint32 nClocks ;
+
+	uint32 sharedObjectsCounter;
+
 
 };
 
