@@ -5,7 +5,28 @@
 #include "memory_manager.h"
 
 
+#if USE_KHEAP
+	struct
+	{
+
+		struct spinlock kheaplock;
+	}kheap_protection;
+	void kheap_lock_init();
+
+#else
+
+#endif
+
 // helper functions //
+
+void kheap_lock_init()
+{
+#if USE_KHEAP
+	init_spinlock(&kheap_protection.kheaplock, "kheap lock");
+#else
+	panic("not handled when KERN HEAP is disabled");
+#endif
+}
 int synced_map_frame(uint32 *ptr_page_directory, struct FrameInfo *ptr_frame_info, uint32 virtual_address, int perm) {
 
 	// physical address for the frame
@@ -63,8 +84,7 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 	// initialize va_page_num to -1 means no mapping yet.
 	memset(allocated_pages_num, 0, sizeof(allocated_pages_num));
 	memset(va_page_num, -1, sizeof(va_page_num));
-
-
+	kheap_lock_init();
     //step1 limits of kheap
 	start_kernal_heap =  daStart;
 	segment_break = start_kernal_heap + initSizeToAllocate;
@@ -232,11 +252,12 @@ void* kmalloc(unsigned int size)
 //    3. allocate physical frame
 //    4. map virtual to physical
 
-
+       acquire_spinlock(&kheap_protection.kheaplock);
 		//	SIZE VALIDATION:
 		if(size <= DYN_ALLOC_MAX_BLOCK_SIZE) {
 			void* ret =  alloc_block_FF(size);
 			//cprintf("[block allocator]the returned kmalloc address: %p\n", ret);
+			release_spinlock(&kheap_protection.kheaplock);
 			return ret;
 		}
 
@@ -263,6 +284,7 @@ void* kmalloc(unsigned int size)
 //			cprintf("inside\n");
 			if (total_size > (KERNEL_HEAP_MAX - pgalloc_last)) {
 				//cprintf("[kmalloc ret = null]no enough memory available\n");
+				release_spinlock(&kheap_protection.kheaplock);
 				return NULL;
 			}
 			pgalloc_last += total_size;
@@ -276,6 +298,7 @@ void* kmalloc(unsigned int size)
 			struct FrameInfo *newFrame = NULL;
 			int state = allocate_frame(&newFrame);
 			if (state == E_NO_MEM) {
+				release_spinlock(&kheap_protection.kheaplock);
 				return NULL;
 			}
 
@@ -289,6 +312,7 @@ void* kmalloc(unsigned int size)
 
 
 //		cprintf("[page allocator]the returned kmalloc address: %p\n", result);
+		release_spinlock(&kheap_protection.kheaplock);
 		return (void*)result;
 }
 
@@ -308,11 +332,14 @@ void kfree(void* virtual_address)
 		return;
 	}
 
+	acquire_spinlock(&kheap_protection.kheaplock);
+
 	//	free: whether Blk or Pg allocator
 	if ((char*)virtual_address < (char*)segment_break && (char*)virtual_address >= (char*)start_kernal_heap) {
 		// block allocator: call free;
 //		cprintf("free using the dynalloc.\n");
 		free_block(virtual_address);
+		release_spinlock(&kheap_protection.kheaplock);
 		return;
 	} else if((char*)virtual_address >= (char*)(hard_limit + PAGE_SIZE) && (char*)virtual_address < (char*)KERNEL_HEAP_MAX) {
 		// page allocator free
@@ -320,7 +347,11 @@ void kfree(void* virtual_address)
 		uint32 num_of_pages = allocated_pages_num[page_num];
 
 		// if no pages allocated
-		if (num_of_pages == 0) return;
+		if (num_of_pages == 0) {
+			release_spinlock(&kheap_protection.kheaplock);
+			return;
+		}
+
 
 		void *it = virtual_address;
 		for(uint32 i = 0; i < num_of_pages; i++, it += PAGE_SIZE){
@@ -351,6 +382,8 @@ void kfree(void* virtual_address)
 	} else {
 		panic("kfree() : the provided address is invalid..!!");
 	}
+
+	release_spinlock(&kheap_protection.kheaplock);
 
 
 

@@ -370,6 +370,38 @@ void sys_set_uheap_strategy(uint32 heapStrategy)
 /*******************************/
 //[PROJECT'24.MS3] ADD SUITABLE CODE HERE
 
+void sys_initializeTheQueue(struct Env_Queue* theQueue) {
+	init_queue(theQueue);
+}
+
+void sys_sleepOnSemaphore(struct semaphore* theSemaphore) {
+
+	struct Env *env = get_cpu_proc();
+
+	acquire_spinlock(&(ProcessQueues.qlock));
+	theSemaphore->semdata->lock = 0;
+
+	env->env_status = ENV_BLOCKED;
+	enqueue(&(theSemaphore->semdata->queue), env);
+	sched();
+
+	theSemaphore->semdata->lock = 1;
+	release_spinlock(&(ProcessQueues.qlock));
+
+	return;
+}
+
+void sys_signalToSemaphore(struct semaphore* theSemaphore) {
+
+	acquire_spinlock(&(ProcessQueues.qlock));
+
+	sched_insert_ready(dequeue(&(theSemaphore->semdata->queue)));
+
+	release_spinlock(&(ProcessQueues.qlock));
+
+	return;
+}
+
 
 /*******************************/
 /* SHARED MEMORY SYSTEM CALLS */
@@ -538,6 +570,19 @@ uint32 syscall(uint32 syscallno, uint32 a1, uint32 a2, uint32 a3, uint32 a4, uin
 		break;
 	case SYS_allocate_user_mem:
 		sys_allocate_user_mem(a1, a2);
+		return 0;
+		break;
+
+	case SYS_sleepOnSemaphore:
+		sys_sleepOnSemaphore((struct semaphore*)a1);
+		return 0;
+		break;
+	case SYS_signalToSemaphore:
+		sys_signalToSemaphore((struct semaphore*)a1);
+		return 0;
+		break;
+	case SYS_initializeTheQueue:
+		sys_initializeTheQueue((struct Env_Queue*)a1);
 		return 0;
 		break;
 

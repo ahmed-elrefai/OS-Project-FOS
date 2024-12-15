@@ -57,6 +57,11 @@ enum
 	SYS_allocate_user_mem,
 	// makaty
 
+	// semaphores
+	SYS_signalToSemaphore,
+	SYS_sleepOnSemaphore,
+	SYS_initializeTheQueue,
+
 	//=====================================================================
 	NSYSCALLS
 };

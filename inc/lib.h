@@ -87,6 +87,9 @@ void 	sys_set_uheap_strategy(uint32 heapStrategy);
 int 	sys_pf_calculate_allocated_pages(void);
 
 //Semaphores
+void sys_initializeTheQueue(struct Env_Queue* theQueue);
+void sys_signalToSemaphore(struct semaphore* theSemaphore);
+void sys_sleepOnSemaphore(struct semaphore* theSemaphore);
 
 
 //Sharing
