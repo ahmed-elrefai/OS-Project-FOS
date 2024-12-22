@@ -92,7 +92,7 @@ bool is_initialized = 0;
 
 void initialize_dynamic_allocator(uint32 daStart, uint32 initSizeOfAllocatedSpace)
 {
-	cprintf("initializing initialize_dynamic_allocator from %x, size = %u\n", daStart, initSizeOfAllocatedSpace);
+	//cprintf("initializing initialize_dynamic_allocator from %x, size = %u\n", daStart, initSizeOfAllocatedSpace);
 
 	//==================================================================================
 	//DON'T CHANGE THESE LINES==========================================================
@@ -390,7 +390,7 @@ void *alloc_block_BF(uint32 size)
 	//panic("alloc_block_BF is not implemented yet");
 	//Your Code is Here...
 
-	cprintf("---------------alloc_block_BF called---------------\n");
+	//cprintf("---------------alloc_block_BF called---------------\n");
 
 	int32 totalAllocationSize = size + 2 * sizeof(int); // totalSize to be allocated.
 	struct BlockElement* ptrMiniSize = NULL;
@@ -849,6 +849,7 @@ void *realloc_block_FF(void* va, uint32 new_size)
 		}
 		return NULL;
 }
+
 
 /*********************************************************************************************/
 /*********************************************************************************************/

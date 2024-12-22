@@ -70,7 +70,7 @@ void free(void* virtual_address) {
 	// Write your code here, remove the panic and write your code
 	//panic("free() is not implemented yet...!!");
 
-	cprintf("-----------free called with va = %p---------\n", virtual_address);
+	//cprintf("-----------free called with va = %p---------\n", virtual_address);
 	if (virtual_address == NULL) {
 			panic("ufree() : the provided address is NULL..!!");
 			return;
@@ -81,12 +81,12 @@ void free(void* virtual_address) {
 	//	free: whether Blk or Pg allocator
 	if ((char*)virtual_address < (char*)(myEnv->sbreak - sizeof(int)) && (char*)virtual_address >= (char*)(myEnv->start + sizeof(int))) {
 		// block allocator: call free;
-		cprintf("(user free)free using the dynalloc.\n");
+		//cprintf("(user free)free using the dynalloc.\n");
 		free_block(virtual_address);
 		return;
 	} else if((char*)virtual_address >= (char*)(myEnv->hlimit + PAGE_SIZE) && (char*)virtual_address < (char*)USER_HEAP_MAX) {
 		// unmark pages and free them
-		cprintf("(uheap free, va = %p)free using the page allocator.\n", virtual_address);
+		//cprintf("(uheap free, va = %p)free using the page allocator.\n", virtual_address);
 		// get the size of the current allocated pages
 		// uint32 page_num = (((uint32)virtual_address) - USER_HEAP_START)/PAGE_SIZE;
 		// uint32 pages = 0;
@@ -144,7 +144,7 @@ void* sget(int32 ownerEnvID, char *sharedVarName)
 	int ret = sys_getSharedObject(ownerEnvID, sharedVarName, (void *)(USER_HEAP_START + 3*PAGE_SIZE));
 	if(ret == E_SHARED_MEM_NOT_EXISTS || ret == E_NO_SHARE)
 	{
-		cprintf("gets returned null\n");
+		//cprintf("gets returned null\n");
 		return NULL;
 	}
 

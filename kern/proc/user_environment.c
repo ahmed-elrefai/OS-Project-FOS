@@ -464,12 +464,93 @@ void env_start(void)
 void env_free(struct Env *e)
 {
 	/*REMOVE THIS LINE BEFORE START CODING*/
-	return;
+	//return;
 	/**************************************/
 
 	//[PROJECT'24.MS3] BONUS [EXIT ENV] env_free
 	// your code is here, remove the panic and write your code
-	panic("env_free() is not implemented yet...!!");
+	//panic("env_free() is not implemented yet...!!");
+
+	//step 1 remove working set elements and workingset itself
+//	struct WorkingSetElement* it =NULL;
+//	LIST_FOREACH(it ,&e->page_WS_list){
+//            unmap_frame(&e->env_page_directory ,(uint32) it);
+//	}
+//
+//	//step 2 delete working set itself
+//	unmap_frame(&e->env_page_directory ,(uint32) e->page_WS_list);
+//
+//	//step 3 all page tables in the entire user virtual memory
+//	uint32 start_user =e->start;
+//	uint32 *ptr_page_table = NULL;
+//	struct FrameInfo* frame_info_ptr = get_frame_info(e->env_page_directory, start_user, &ptr_page_table);
+//
+//	while(start_user<e->sbreak){
+//
+//		struct FrameInfo* frame_info_ptr = get_frame_info(e->env_page_directory, start_user, &ptr_page_table);
+//		if(frame_info_ptr != NULL) {
+//
+//			unmap_frame(e->env_page_directory, start_user);
+//		}
+//
+//		int empty = 1;
+//		for(int i = 0 ;i<1024 ; i++)
+//		{
+//			if(ptr_page_table[i]!=0){
+//
+//				empty=0;
+//				break;
+//			}
+//		}
+//
+//		if(empty){
+//
+//			struct FrameInfo* frame_info_ptr = get_frame_info(e->env_page_directory, (uint32)ptr_page_table, &ptr_page_table);
+//			free_frame(frame_info_ptr);
+//			pd_clear_page_dir_entry(e->env_page_directory,(uint32)start_user);
+//		}
+//
+//		start_user+=PAGE_SIZE;
+//	}
+//
+//
+//	 start_user =e->hlimit+PAGE_SIZE;
+//	 *ptr_page_table = NULL;
+//	 frame_info_ptr = get_frame_info(e->env_page_directory, start_user, &ptr_page_table);
+//
+//	while(start_user<USER_HEAP_MAX){
+//		struct FrameInfo* frame_info_ptr = get_frame_info(e->env_page_directory, start_user, &ptr_page_table);
+//		if(frame_info_ptr != NULL) {
+//
+//			unmap_frame(e->env_page_directory, start_user);
+//		}
+//
+//		int empty = 1;
+//		for(int i = 0 ;i<1024 ; i++)
+//		{
+//			if(ptr_page_table[i]!=0){
+//
+//				empty=0;
+//				break;
+//			}
+//		}
+//
+//		if(empty){
+//
+//			struct FrameInfo* frame_info_ptr = get_frame_info(e->env_page_directory, (uint32)ptr_page_table, &ptr_page_table);
+//			free_frame(frame_info_ptr);
+//			pd_clear_page_dir_entry(e->env_page_directory,(uint32)start_user);
+//		}
+//
+//		start_user+=PAGE_SIZE;
+//	}
+//
+//	//step 4 directory table
+//	struct FrameInfo* frame_info_ptr = get_frame_info(e->env_page_directory, (uint32)e->env_page_directory, &ptr_page_table);
+//	free_frame(frame_info_ptr);
+//	free_frame(frame_info_ptr);
+//	//step 5 user kernel stack
+
 
 
 	// [9] remove this program from the page file
@@ -884,7 +965,7 @@ void* create_user_kern_stack(uint32* ptr_user_page_directory) {
 
     if (status != TABLE_IN_MEMORY) {
     	page_table = create_page_table(ptr_user_page_directory, (uint32)kernel_stack);
-    	cprintf("error404, see stack function\n");
+    	//cprintf("error404, see stack function\n");
     }
 
     //page_table[PTX(kernel_stack)] = page_table[PTX(kernel_stack)] & (~PERM_PRESENT);
@@ -940,7 +1021,7 @@ void initialize_uheap_dynamic_allocator(struct Env* e, uint32 daStart, uint32 da
 	//panic("initialize_uheap_dynamic_allocator() is not implemented yet...!!");
 
 	//dynalloc
-	cprintf("init start: %x, init limit: %x\n", daStart, daLimit);
+	//cprintf("init start: %x, init limit: %x\n", daStart, daLimit);
 	e->start = daStart;
 	e->sbreak = daStart;
 	e->hlimit = daLimit;
