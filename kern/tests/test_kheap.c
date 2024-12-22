@@ -1302,7 +1302,7 @@ int test_kfree_bestfirstfit()
 			ptr_allocations[10] = kmalloc(30*Mega);
 			if ((uint32) ptr_allocations[10] != (ACTUAL_START)) {
 
-				cprintf("-> ptr_allocations[10]: %p, acctual: %p\n", (uint32)ptr_allocations[10], (void*)ACTUAL_START);
+				//cprintf("-> ptr_allocations[10]: %p, acctual: %p\n", (uint32)ptr_allocations[10], (void*)ACTUAL_START);
 
 				correct = 0; cprintf("7.4 Wrong start address for the allocated space... check return address of kmalloc\n"); }
 			if ((pf_calculate_free_frames() - freeDiskFrames) != 0) { correct = 0; cprintf("7.4 Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)\n"); }
@@ -2006,6 +2006,7 @@ int test_ksbrk()
 		actualSize = 2*kilo;
 		freeFrames = (int)sys_calculate_free_frames() ;
 		freeDiskFrames = (int)pf_calculate_free_frames() ;
+
 		ptr_allocations[0] = kmalloc(actualSize - sizeOfMetaData);
 		expectedVA = actualStart + sizeOfMetaData/2 /*header*/;
 		if (check_block(ptr_allocations[0], expectedVA, actualSize, 1) == 0)
@@ -2014,11 +2015,13 @@ int test_ksbrk()
 		{ correct = 0; cprintf("A.2: Wrong memory allocation.\n"); }
 		if (((int)pf_calculate_free_frames() - freeDiskFrames) != 0)
 		{ correct = 0; cprintf("A.3: Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)\n"); }
+
 		cprintf("---------------[1st blo0ck done]---------------\n");
 		//=> Fill 1st page
 		actualSize = PAGE_SIZE - (2*kilo + 2*sizeof(int)) - INITIAL_BLOCK_ALLOCATIONS;
 		freeFrames = (int)sys_calculate_free_frames() ;
 		freeDiskFrames = (int)pf_calculate_free_frames() ;
+
 		ptr_allocations[1] = kmalloc(actualSize - sizeOfMetaData);
 		expectedVA = actualStart + 2*kilo + sizeOfMetaData/2 /*header*/;
 		if (check_block(ptr_allocations[1], expectedVA, actualSize, 1) == 0)
@@ -2027,12 +2030,15 @@ int test_ksbrk()
 		{ correct = 0; cprintf("A.5: Wrong memory allocation.\n"); }
 		if (((int)pf_calculate_free_frames() - freeDiskFrames) != 0)
 		{ correct = 0; cprintf("A.6: Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)\n"); }
+
 		cprintf("---------------[2st blo0ck done]---------------\n");
+
 		//2 KB => sbrk is called while the last block is allocated
 		{
 			actualSize = 2*kilo;
 			freeFrames = (int)sys_calculate_free_frames() ;
 			freeDiskFrames = (int)pf_calculate_free_frames() ;
+
 			cprintf("---------------[step1]---------------\n"); //
 			ptr_allocations[2] = kmalloc(actualSize - sizeOfMetaData);
 			cprintf("---------------[step2]---------------\n");
@@ -2041,19 +2047,24 @@ int test_ksbrk()
 			if (check_block(ptr_allocations[2], expectedVA, actualSize, 1) == 0)
 			{ correct = 0; cprintf("A.7: Wrong block data\n"); }
 			//check splitted free block
+
 			cprintf("---------------[step3]---------------\n");
 			expectedVA = expectedVA + actualSize ;
 			expectedSize = PAGE_SIZE - actualSize;
 			if (check_block(expectedVA, expectedVA, expectedSize, 0) == 0)
 			{ correct = 0; cprintf("A.8: Wrong block data\n"); }
 			//check END block & BREAK
+
 			cprintf("---------------[step4]---------------\n");
+
 			ENDBlk = (void*)KERNEL_HEAP_START + 2*PAGE_SIZE - sizeof(int);
 			if (*ENDBlk != 0x1)
 			{ correct = 0; cprintf("A.9: Wrong END block after calling sbrk()\n"); }
 			newBrk = (uint32)sbrk(0);
 			expectedSBRK = (void*)KERNEL_HEAP_START + 2*PAGE_SIZE ;
+
 			cprintf("---------------[step5]---------------\n");
+
 			if ((void*)newBrk != expectedSBRK)
 			{correct = 0; cprintf("A.10: Wrong new break: Expected: %x, Actual: %x\n", expectedSBRK, newBrk);}
 			//check allocations in RAM & PAGE FILE
@@ -2077,6 +2088,7 @@ int test_ksbrk()
 		{ correct = 0; cprintf("A.14: Wrong memory allocation.\n"); }
 		if (((int)pf_calculate_free_frames() - freeDiskFrames) != 0)
 		{ correct = 0; cprintf("A.15: Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)\n"); }
+
 		cprintf("---------------[4st blo0ck done]---------------\n");
 	}
 	if (correct)

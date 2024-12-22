@@ -169,6 +169,7 @@ void initialize_dynamic_allocator(uint32 daStart, uint32 initSizeOfAllocatedSpac
 
 	//panic("initialize_dynamic_allocator is not implemented yet");
 }
+
 //==================================
 // [2] SET BLOCK HEADER & FOOTER:
 //==================================
@@ -176,7 +177,7 @@ void initialize_dynamic_allocator(uint32 daStart, uint32 initSizeOfAllocatedSpac
 
 void set_block_data(void* va, uint32 totalSize, bool isAllocated)
 {
-	//cprintf("---------------set_block_data called---------------\n");
+
 	//TODO: [PROJECT'24.MS1 - #05] [3] DYNAMIC ALLOCATOR - set_block_data
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 
@@ -378,19 +379,18 @@ void *alloc_block_FF(uint32 size)
 
 }
 
+
 //=========================================
 // [4] ALLOCATE BLOCK BY BEST FIT:
 //=========================================
 void *alloc_block_BF(uint32 size)
 {
 
-
 	//TODO: [PROJECT'24.MS1 - BONUS] [3] DYNAMIC ALLOCATOR - alloc_block_BF
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 	//panic("alloc_block_BF is not implemented yet");
 	//Your Code is Here...
 
-	//cprintf("---------------alloc_block_BF called---------------\n");
 
 	int32 totalAllocationSize = size + 2 * sizeof(int); // totalSize to be allocated.
 	struct BlockElement* ptrMiniSize = NULL;
@@ -501,15 +501,15 @@ void *alloc_block_BF(uint32 size)
 
 	//cprintf("the called size = %d BUT RETURNED sbrk()\n", size);
 
-	uint32 required_size = size + 2*sizeof(int);
 
+	uint32 required_size = size + 2*sizeof(int);
 	void* ret = sbrk(ROUNDUP(required_size, PAGE_SIZE)/PAGE_SIZE);
 
 	if(*((uint32 *) ret) == -1)
 	{
 		return NULL;
 	}
-	//end_bound = ret + (ROUNDUP(required_size, PAGE_SIZE));
+
 	return alloc_block_BF(size);
 
 
@@ -532,7 +532,7 @@ void free_block(void *va)
 //	cprintf("---------------------------\n");
 //	cprintf("[free before ex.]-> free block list size: %d\n",LIST_SIZE(&freeBlocksList));
 //	cprintf("-> calling free with va = %x \n", va);
-	//cprintf("---------------free_block called---------------\n");
+
 
 //	if((char*)va < (char*)(begin_bound + sizeof(int)) || (char*)va >= (char*)(end_bound - sizeof(int)))
 //	{   cprintf ("bra 7dod\n");
@@ -681,8 +681,6 @@ void free_block(void *va)
 //	cprintf("[free block after ex.]-> free block list size: %d\n",LIST_SIZE(&freeBlocksList));
 //	cprintf("---------------------------\n");
 }
-
-
 
 //=========================================
 // [6] REALLOCATE BLOCK BY FIRST FIT:

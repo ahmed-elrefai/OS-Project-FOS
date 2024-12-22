@@ -16,9 +16,11 @@
 #define EXPLICIT_LIST_FREE_ONLY 3
 #define LIST_IMPLEMENTATION EXPLICIT_LIST_FREE_ONLY
 
+
 // end and start of the dynamic allocator memory
 void* begin_bound;
 void* end_bound;
+
 
 /*Allocation Type*/
 enum
