@@ -4,7 +4,6 @@
 #include <inc/dynamic_allocator.h>
 #include "memory_manager.h"
 
-
 #if USE_KHEAP
 	struct
 	{
@@ -332,14 +331,11 @@ void kfree(void* virtual_address)
 		return;
 	}
 
-	acquire_spinlock(&kheap_protection.kheaplock);
-
 	//	free: whether Blk or Pg allocator
 	if ((char*)virtual_address < (char*)segment_break && (char*)virtual_address >= (char*)start_kernal_heap) {
 		// block allocator: call free;
 //		cprintf("free using the dynalloc.\n");
 		free_block(virtual_address);
-		release_spinlock(&kheap_protection.kheaplock);
 		return;
 	} else if((char*)virtual_address >= (char*)(hard_limit + PAGE_SIZE) && (char*)virtual_address < (char*)KERNEL_HEAP_MAX) {
 		// page allocator free
@@ -347,11 +343,7 @@ void kfree(void* virtual_address)
 		uint32 num_of_pages = allocated_pages_num[page_num];
 
 		// if no pages allocated
-		if (num_of_pages == 0) {
-			release_spinlock(&kheap_protection.kheaplock);
-			return;
-		}
-
+		if (num_of_pages == 0) return;
 
 		void *it = virtual_address;
 		for(uint32 i = 0; i < num_of_pages; i++, it += PAGE_SIZE){
@@ -382,8 +374,6 @@ void kfree(void* virtual_address)
 	} else {
 		panic("kfree() : the provided address is invalid..!!");
 	}
-
-	release_spinlock(&kheap_protection.kheaplock);
 
 
 

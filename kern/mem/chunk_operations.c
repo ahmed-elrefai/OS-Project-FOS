@@ -128,7 +128,7 @@ void mark_page(uint32 page_va, struct Env* env, uint32 state) {
 	uint32* ptr_page_table;
 	int status = get_page_table(env->env_page_directory, page_va, &ptr_page_table);
 	if(status == TABLE_NOT_EXIST) {
-		cprintf("creating page table\n");
+		//cprintf("creating page table\n");
 		ptr_page_table = (uint32*)create_page_table(env->env_page_directory, page_va);
 	}
 
@@ -145,7 +145,7 @@ void mark_page(uint32 page_va, struct Env* env, uint32 state) {
 	if(state == PAGE_MARK_START) {
 		//cprintf("%p mark start done\n", (void*)page_va);
 		ptr_page_table[PTX(page_va)] |= (1<<11);
-		cprintf("address %x marked start\n", page_va);
+		//cprintf("address %x marked start\n", page_va);
 	}
 
 	//cprintf("page at address %x marked\n", page_va);
@@ -294,7 +294,7 @@ uint32 uhget_pgallocation_address(uint32 size, struct Env* e) {
 void allocate_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 {
 
-	cprintf("-------------allocate_user_mem called-------------\n");
+	//cprintf("-------------allocate_user_mem called-------------\n");
 	/*====================================*/
 	/*Remove this line before start coding*/
 	//	inctst();

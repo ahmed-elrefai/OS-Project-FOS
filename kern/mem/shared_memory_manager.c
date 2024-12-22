@@ -436,24 +436,50 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 //==========================
 //delete the given shared object from the "shares_list"
 //it should free its framesStorage and the share object itself
+
+//helper function
+struct Share* find_share(void *startVA , struct Env* e){
+
+	acquire_spinlock(&AllShares.shareslock);
+	uint32* pg_table = NULL;
+	struct FrameInfo* ptr_frame =get_frame_info(e->env_page_directory ,(uint32) startVA , &pg_table);
+	struct Share* it= NULL;
+
+    LIST_FOREACH(it , &AllShares.shares_list){
+    	int32 sz =sizeof(it->framesStorage)/sizeof(it->framesStorage[0]);
+    	for(int i =0 ; i<sz ; i++){
+    		if(ptr_frame==it->framesStorage[i]){
+    			//cprintf("\nfound frame successfully\n");
+    			release_spinlock(&AllShares.shareslock);
+    			return it;
+    		}
+    	}
+    }
+
+
+    release_spinlock(&AllShares.shareslock);
+    return  NULL;
+}
 void free_share(struct Share* ptrShare)
 {
 	//TODO: [PROJECT'24.MS2 - BONUS#4] [4] SHARED MEMORY [KERNEL SIDE] - free_share()
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("free_share is not implemented yet");
+	//panic("free_share is not implemented yet");
 	//Your Code is Here...
 
-	// free all the storage.
-	kfree((void*)(ptrShare->framesStorage));
+	    acquire_spinlock(&AllShares.shareslock);
+		LIST_REMOVE(&AllShares.shares_list , ptrShare);
+		release_spinlock(&AllShares.shareslock);
+		//delete frames
+//		int32 sz = sizeof(ptrShare->framesStorage)/sizeof(ptrShare->framesStorage[0]);
+//		for(int i = 0 ;i<sz ; i++)
+//		{
+//			ptrShare->framesStorage[i]=NULL;
+//		}
+		//delete shared object from kernel heap
 
-	acquire_spinlock(&AllShares.shareslock);
-	LIST_REMOVE(&AllShares.shares_list , ptrShare);
-	release_spinlock(&AllShares.shareslock);
-
-	//delete shared object from kernel heap
-	kfree((void*)ptrShare);
-
-
+		kfree((void *)ptrShare);
+		kfree((void *)ptrShare->framesStorage);
 
 }
 //========================
@@ -463,21 +489,87 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 {
 	//TODO: [PROJECT'24.MS2 - BONUS#4] [4] SHARED MEMORY [KERNEL SIDE] - freeSharedObject()
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("freeSharedObject is not implemented yet");
+	//panic("freeSharedObject is not implemented yet");
 	//Your Code is Here...
 
-	// not complete
-	struct Share* shared = (struct Share*)startVA; // pointer to the shared object
+	struct Env* myenv =get_cpu_proc();
 
-	// delete the storage
-	kfree((void*)(shared->framesStorage));
+	//step1 find your share object
+	struct Share* cur_share =find_share(startVA , myenv);
+	if(cur_share==NULL)
+		return 0;
+
+	//step2 unmap frames
+
+	uint32 num_of_frames = (ROUNDUP(cur_share->size, PAGE_SIZE)/PAGE_SIZE);
+	uint32 it =(uint32)startVA;
+
+	uint32 *ptr_page_table = NULL;
+	struct FrameInfo* frame_info_ptr = get_frame_info(myenv->env_page_directory, it, &ptr_page_table);
+
+	for(int i = 0 ;i<num_of_frames ; i++ , it+=PAGE_SIZE){
+
+		struct FrameInfo* frame_info_ptr = get_frame_info(myenv->env_page_directory, it, &ptr_page_table);
+		if(frame_info_ptr != NULL) {
+
+			unmap_frame(myenv->env_page_directory, it);
+			sm_mark_page(it ,myenv ,FREE_PAGE);
+		}
+
+			int empty = 1;
+			for(int i = 0 ;i<1024 ; i++)
+			{
+				if(ptr_page_table[i]!=0){
+
+					empty=0;
+					break;
+				}
+			}
+			if(empty){
+
+				struct FrameInfo* frame_info_ptr = get_frame_info(myenv->env_page_directory, (uint32)ptr_page_table, &ptr_page_table);
+				free_frame(frame_info_ptr);
+				pd_clear_page_dir_entry(myenv->env_page_directory,(uint32)it);
+			}
+
+	}
+
+	//step3 remove page table if empty
+
+//	frame_info_ptr = get_frame_info(myenv->env_page_directory, (uint32)ptr_page_table, &ptr_page_table);
+//	if(frame_info_ptr!=NULL){
+//		int empty = 1;
+//		for(int i = 0 ;i<1024 ; i++)
+//		{
+//			if(ptr_page_table[i]!=0){
+//				empty=0;
+//				break;
+//			}
+//		}
+//		if(empty){
+//			//cprintf("\npd_clear_page_dir_entry\n");
+//			struct FrameInfo* frame_info_ptr = get_frame_info(myenv->env_page_directory, (uint32)ptr_page_table, &ptr_page_table);
+//			free_frame(frame_info_ptr);
+//			pd_clear_page_dir_entry(myenv->env_page_directory,(uint32)it);
+//		}
+//	}
+
+
+    //cprintf("\nref ======= %d\n" , cur_share->references);
+	//step4 decrement refrences
+	cur_share->references--;
+
+	//step5 last share remove it
+	if(cur_share->references==0){
+		//cprintf("\nfree_share\n");
+		free_share(cur_share);
+	}
+
+	//step6 is already completed by unmap and free frames;
 
 
 
 
-
-
-
-
+return 0;
 
 }

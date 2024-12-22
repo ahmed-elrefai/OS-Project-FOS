@@ -91,7 +91,6 @@ void sys_initializeTheQueue(struct Env_Queue* theQueue);
 void sys_signalToSemaphore(struct semaphore* theSemaphore);
 void sys_sleepOnSemaphore(struct semaphore* theSemaphore);
 
-
 //Sharing
 //2017
 int 	sys_createSharedObject(char* shareName, uint32 size, uint8 isWritable, void* virtual_address);
